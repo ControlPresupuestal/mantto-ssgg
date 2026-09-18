@@ -80,7 +80,14 @@
 
     <div id="costCenterView" hidden>
       <section class="panel consumption-search-panel">
-        <div class="heading-with-step"><span class="step-number">1</span><div><h2>Consulta de consumos</h2><p>Usa uno o varios filtros para explorar el ejecutado.</p></div></div>
+        <div class="section-heading">
+          <div class="heading-with-step"><span class="step-number">1</span><div><h2>Consulta de consumos</h2><p>Usa uno o varios filtros para explorar el ejecutado.</p></div></div>
+          <div class="area-selector" role="group" aria-label="Área de consulta de consumos">
+            <button class="consumption-area-button active" type="button" data-consumption-area="" aria-pressed="true">Todo</button>
+            <button class="consumption-area-button" type="button" data-consumption-area="MANTENIMIENTO" aria-pressed="false">Mantenimiento</button>
+            <button class="consumption-area-button" type="button" data-consumption-area="SERVICIOS GENERALES" aria-pressed="false">SSGG</button>
+          </div>
+        </div>
         <div class="query-grid">
           <label class="field-label">Centro de costo<input id="costCenterSearch" type="search" list="costCenterOptions" placeholder="Código o nombre" autocomplete="off" disabled><datalist id="costCenterOptions"></datalist></label>
           <label class="field-label">Proveedor<input id="providerSearch" type="search" list="providerOptions" placeholder="Nombre del proveedor" autocomplete="off" disabled><datalist id="providerOptions"></datalist></label>
@@ -102,12 +109,17 @@
             <div class="section-heading"><div><h2>Consumo por clase</h2><p id="classChartSubtitle">Haz clic en una clase para filtrar</p></div></div>
             <div class="class-chart-wrap"><canvas id="classChart"></canvas></div>
           </article>
+          <article class="panel item-consumption-panel">
+            <div class="section-heading"><div><h2>Consumo por partida</h2><p id="itemChartSubtitle">Haz clic en una partida para filtrar el detalle</p></div></div>
+            <div class="item-chart-wrap"><canvas id="itemChart"></canvas></div>
+          </article>
         </section>
         <section class="panel">
           <div class="section-heading"><div><h2>Detalle de consumos</h2><p id="ccTableSummary"></p></div><button id="downloadCcButton" class="excel-button" type="button">Descargar Excel</button></div>
           <div class="detail-table-scroll"><table class="detail-table">
             <thead><tr>
               <th><button class="sort-button" data-cc-sort="month">Mes</button></th>
+              <th><button class="sort-button" data-cc-sort="item">Partida</button></th>
               <th><button class="sort-button" data-cc-sort="className">Clase</button></th>
               <th><button class="sort-button" data-cc-sort="detail">Detalle / glosa</button></th>
               <th><button class="sort-button" data-cc-sort="costCenterId">ID costo</button></th>
@@ -119,7 +131,7 @@
           <div class="pagination"><button id="previousCcPage" type="button" disabled>Anterior</button><span id="ccPageText">Página 1 de 1</span><button id="nextCcPage" type="button" disabled>Siguiente</button></div>
         </section>
       </section>
-      <div id="costCenterEmpty" class="empty-state">Ingresa un centro de costo, proveedor o palabra del detalle para comenzar.</div>
+      <div id="costCenterEmpty" class="empty-state">Selecciona un área o ingresa un centro de costo, proveedor o palabra del detalle para comenzar.</div>
     </div>
 
     <div id="laborView" hidden>
