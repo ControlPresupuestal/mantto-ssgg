@@ -1,0 +1,52 @@
+name: Actualizar datos de Mantenimiento
+
+on:
+  repository_dispatch:
+    types: [actualizar_mantto_ssgg]
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Descargar CSV desde SharePoint
+        env:
+          DOWNLOAD_URL: ${{ github.event.client_payload.url }}
+        run: |
+          mkdir -p data
+
+          if [[ "$DOWNLOAD_URL" == *"?"* ]]; then
+            SEPARATOR="&"
+          else
+            SEPARATOR="?"
+          fi
+
+          curl --fail --location --retry 3 \
+            "${DOWNLOAD_URL}${SEPARATOR}download=1" \
+            --output data/BD_ManttoSSGG.csv
+
+          test -s data/BD_ManttoSSGG.csv
+
+          if head -c 200 data/BD_ManttoSSGG.csv | grep -qi "<!doctype html"; then
+            echo "El enlace devolvió una página HTML y no el archivo CSV."
+            exit 1
+          fi
+
+      - name: Guardar CSV actualizado
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/BD_ManttoSSGG.csv
+
+          if git diff --cached --quiet; then
+            echo "No existen cambios en los datos."
+          else
+            git commit -m "Actualizar datos de Mantenimiento y SSGG"
+            git push
+          fi
