@@ -3,6 +3,8 @@ const DATA_FILES = [
   "data/BD_ManttoSSGG.csv.csv"
 ];
 
+const OPTIMIZED_DATA_FILE = "data/dashboard.json.gz";
+
 const MONTHS = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
@@ -55,7 +57,7 @@ function toNumber(value) {
 
 function normalizeRow(row) {
   const detail = clean(row["DETALLE*"]) || clean(row["Glosa'"]) || clean(row.DETALLE);
-  const normalized = {
+  return prepareRow({
     month: clean(row["MES'"]).toUpperCase(),
     category: clean(row["Rubro'"]),
     item: clean(row["Partida'"]),
@@ -69,8 +71,10 @@ function normalizeRow(row) {
     quantity: toNumber(row.CANTIDAD),
     budget: toNumber(row["$ SEM"]),
     actual: toNumber(row.IMPORTE)
-  };
+  });
+}
 
+function prepareRow(normalized) {
   normalized.search = [
     normalized.month, normalized.category, normalized.item, normalized.shortItem,
     normalized.className, normalized.detail, normalized.costCenter,
@@ -78,6 +82,44 @@ function normalizeRow(row) {
   ].join(" ").toLocaleLowerCase("es");
 
   return normalized;
+}
+
+function dictionaryValue(dictionary, position) {
+  return position >= 0 ? dictionary[position] || "" : "";
+}
+
+async function loadOptimizedData() {
+  const response = await fetch(OPTIMIZED_DATA_FILE);
+  if (!response.ok) throw new Error(`Archivo optimizado no disponible (${response.status})`);
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  let jsonText;
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    if (typeof DecompressionStream === "undefined") {
+      throw new Error("Este navegador no admite la descompresión rápida.");
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    jsonText = await new Response(stream).text();
+  } else {
+    jsonText = new TextDecoder().decode(bytes);
+  }
+
+  const data = JSON.parse(jsonText);
+  return data.rows.map(row => prepareRow({
+    month: dictionaryValue(data.months, row[0]),
+    category: dictionaryValue(data.categories, row[1]),
+    item: dictionaryValue(data.items, row[2]),
+    shortItem: dictionaryValue(data.shortItems, row[3]),
+    className: dictionaryValue(data.classes, row[4]),
+    detail: row[5] || "",
+    costCenter: dictionaryValue(data.costCenters, row[6]),
+    account: dictionaryValue(data.accounts, row[7]),
+    supplier: dictionaryValue(data.suppliers, row[8]),
+    period: dictionaryValue(data.periods, row[9]),
+    quantity: row[10] || 0,
+    budget: row[11] || 0,
+    actual: row[12] || 0
+  }));
 }
 
 function parseCsv(url) {
@@ -100,6 +142,15 @@ function parseCsv(url) {
 }
 
 async function loadData() {
+  try {
+    state.rows = await loadOptimizedData();
+    if (!state.rows.length) throw new Error("El archivo optimizado está vacío.");
+    initialize();
+    return;
+  } catch (optimizedError) {
+    console.info("Se utilizará el CSV de respaldo:", optimizedError.message);
+  }
+
   let lastError;
   for (const file of DATA_FILES) {
     try {
