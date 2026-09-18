@@ -6,10 +6,10 @@ const PAGE_SIZE=50;
 
 const state={
   rows:[],view:"budgetView",area:"",areaRows:[],itemSummaries:[],selectedItem:null,
-  detailRows:[],detailMonth:"",detailClass:"",detailPage:1,detailSort:{key:"month",dir:1},
+  detailRows:[],detailMonth:"",detailPage:1,detailSort:{key:"month",dir:1},
   costCenters:[],ccRows:[],ccPage:1,ccSort:{key:"month",dir:1},charts:{}
 };
-const ids=["statusText","downloadButton","budgetKpi","actualKpi","deviationKpi","deviationPercentKpi","budgetCaption","monthlyTableBody","itemSearch","itemsTableHead","itemsTableBody","itemsSummary","detailPanel","detailTitle","detailSubtitle","detailClassFilter","clearDetailMonth","detailTableBody","closeDetailButton","previousDetailPage","nextDetailPage","detailPageText","costCenterSearch","costCenterOptions","costCenterResults","costCenterEmpty","ccActualKpi","ccRecordsKpi","ccSelectionLabel","ccChartSubtitle","ccTableSummary","ccTableBody","previousCcPage","nextCcPage","ccPageText","errorBox"];
+const ids=["statusText","downloadButton","budgetKpi","actualKpi","deviationKpi","deviationPercentKpi","budgetCaption","monthlyTableBody","itemSearch","itemsTableHead","itemsTableBody","itemsSummary","detailPanel","detailTitle","detailSubtitle","clearDetailMonth","detailTableBody","closeDetailButton","previousDetailPage","nextDetailPage","detailPageText","costCenterSearch","costCenterOptions","costCenterResults","costCenterEmpty","ccActualKpi","ccRecordsKpi","ccSelectionLabel","ccChartSubtitle","ccTableSummary","ccTableBody","previousCcPage","nextCcPage","ccPageText","errorBox"];
 const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
 const usd=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0});
 const number=new Intl.NumberFormat("es-PE");
@@ -59,7 +59,7 @@ function hasExecution(value){return Math.abs(value.actual)>0.000001}
 function monthlyTotals(rows){const result=MONTHS.map(()=>blankTotals());rows.forEach(row=>{const index=MONTHS.indexOf(row.month);if(index>=0)addTotals(result[index],row)});return result}
 
 function applyArea(){
-  state.areaRows=state.area?state.rows.filter(row=>row.category===state.area):[...state.rows];state.selectedItem=null;state.detailRows=[];state.detailMonth="";state.detailClass="";el.detailPanel.hidden=true;el.itemSearch.value="";
+  state.areaRows=state.area?state.rows.filter(row=>row.category===state.area):[...state.rows];state.selectedItem=null;state.detailRows=[];state.detailMonth="";el.detailPanel.hidden=true;el.itemSearch.value="";
   document.querySelectorAll(".area-button").forEach(button=>{const active=button.dataset.area===state.area;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active))});
   const areaName=state.area==="SERVICIOS GENERALES"?"SSGG":state.area||"todas las áreas";el.budgetCaption.textContent=`Presupuesto de ${areaName.toLocaleLowerCase("es")}`;
   renderKpis();renderMonthly();buildItemSummaries();renderItems();
@@ -84,7 +84,7 @@ function appendGroupHeader(row,text,className){const cell=document.createElement
 function appendMetricHeaders(row,separated){[["Ppto.","sub-budget"],["Ejec.","sub-actual"],["Desv. $","sub-deviation"],["Desv. %","sub-deviation"]].forEach(([text,className],index)=>{const cell=document.createElement("th");cell.textContent=text;cell.className=`${className}${separated&&index===0?" month-start":""}`;row.appendChild(cell)})}
 function renderItems(){
   const query=clean(el.itemSearch.value).toLocaleLowerCase("es"),items=query?state.itemSummaries.filter(item=>`${item.name} ${item.fullName}`.toLocaleLowerCase("es").includes(query)):state.itemSummaries;el.itemsTableBody.replaceChildren();const fragment=document.createDocumentFragment();
-  items.forEach(item=>{const row=document.createElement("tr");row.tabIndex=0;row.classList.toggle("selected",state.selectedItem?.key===item.key);row.addEventListener("click",()=>selectItem(item));row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" ")selectItem(item)});const name=document.createElement("td");name.className="sticky-column";name.textContent=item.name;if(item.fullName&&item.fullName!==item.name){const full=document.createElement("span");full.className="item-full-name";full.textContent=item.fullName;name.appendChild(full)}row.appendChild(name);appendMetrics(row,item.total,true);item.months.forEach(value=>appendMetrics(row,value,true));fragment.appendChild(row)});
+  items.forEach(item=>{const row=document.createElement("tr");row.tabIndex=0;row.classList.toggle("selected",state.selectedItem?.key===item.key);row.addEventListener("click",()=>selectItem(item));row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" ")selectItem(item)});const name=document.createElement("td");name.className="sticky-column";name.textContent=item.name;row.appendChild(name);appendMetrics(row,item.total,true);item.months.forEach(value=>appendMetrics(row,value,true));fragment.appendChild(row)});
   el.itemsTableBody.appendChild(fragment);el.itemsSummary.textContent=`${number.format(items.length)} partidas · Selecciona una para ver el ejecutado`;
 }
 function appendMetrics(row,value,separated=false){
@@ -93,14 +93,13 @@ function appendMetrics(row,value,separated=false){
 function appendCell(row,text,className=""){const cell=document.createElement("td");cell.textContent=text;cell.className=className;row.appendChild(cell);return cell}
 
 function selectItem(item){
-  state.selectedItem=item;state.detailRows=state.areaRows.filter(row=>(row.item||row.shortItem||"SIN PARTIDA")===item.key&&row.actual!==0);state.detailMonth="";state.detailClass="";state.detailPage=1;state.detailSort={key:"month",dir:1};el.detailPanel.hidden=false;populateDetailClasses();renderItems();renderDetail();requestAnimationFrame(()=>el.detailPanel.scrollIntoView({behavior:"smooth",block:"start"}));
+  state.selectedItem=item;state.detailRows=state.areaRows.filter(row=>(row.item||row.shortItem||"SIN PARTIDA")===item.key&&row.actual!==0);state.detailMonth="";state.detailPage=1;state.detailSort={key:"month",dir:1};el.detailPanel.hidden=false;renderItems();renderDetail();requestAnimationFrame(()=>el.detailPanel.scrollIntoView({behavior:"smooth",block:"start"}));
 }
-function populateDetailClasses(){const values=[...new Set(state.detailRows.map(row=>row.className).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));el.detailClassFilter.replaceChildren(new Option("Todas las clases",""));values.forEach(value=>el.detailClassFilter.add(new Option(value,value)));el.detailClassFilter.value=""}
 function renderDetail(){
   const item=state.selectedItem;if(!item)return;el.detailTitle.textContent=item.name;el.detailSubtitle.textContent=`${item.fullName||item.name} · ${number.format(state.detailRows.length)} registros ejecutados`;
-  const values=monthlyTotals(state.detailRows);state.charts.detail.resize();state.charts.detail.data.labels=SHORT_MONTHS;state.charts.detail.data.datasets[0].data=values.map(value=>hasExecution(value)?value.actual:null);state.charts.detail.update();updateDetailMonthChip();renderDetailTable();
+  state.charts.detail.resize();state.charts.detail.data.labels=SHORT_MONTHS;state.charts.detail.data.datasets[0].data=item.months.map(value=>value.budget);state.charts.detail.data.datasets[1].data=item.months.map(value=>hasExecution(value)?value.actual:null);state.charts.detail.update();updateDetailMonthChip();renderDetailTable();
 }
-function getFilteredDetailRows(){let rows=state.detailRows.filter(row=>(!state.detailMonth||row.month===state.detailMonth)&&(!state.detailClass||row.className===state.detailClass));return sortRows(rows,state.detailSort)}
+function getFilteredDetailRows(){let rows=state.detailRows.filter(row=>!state.detailMonth||row.month===state.detailMonth);return sortRows(rows,state.detailSort)}
 function renderDetailTable(){
   const filtered=getFilteredDetailRows(),pages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));state.detailPage=Math.min(state.detailPage,pages);const start=(state.detailPage-1)*PAGE_SIZE,rows=filtered.slice(start,start+PAGE_SIZE);el.detailTableBody.replaceChildren();const fragment=document.createDocumentFragment();
   rows.forEach(record=>{const row=document.createElement("tr");[record.month,record.className,record.detail,record.costCenterId,record.costCenter,record.supplier].forEach(value=>appendCell(row,value||"—"));appendCell(row,usd.format(record.actual),"number");fragment.appendChild(row)});el.detailTableBody.appendChild(fragment);el.detailPageText.textContent=`Página ${state.detailPage} de ${pages} · ${number.format(filtered.length)} registros`;el.previousDetailPage.disabled=state.detailPage<=1;el.nextDetailPage.disabled=state.detailPage>=pages;updateSortButtons("detail-sort",state.detailSort);
@@ -130,10 +129,10 @@ function toCamel(text){return text.replace(/-([a-z])/g,(_,letter)=>letter.toUppe
 function createCharts(){
   Chart.defaults.font.family='Inter,"Segoe UI",Arial,sans-serif';Chart.defaults.color="#64808f";
   state.charts.monthly=new Chart(document.getElementById("monthlyChart"),{type:"bar",data:{labels:[],datasets:[budgetDataset(),actualDataset()]},options:chartOptions()});
-  state.charts.detail=new Chart(document.getElementById("detailChart"),{type:"line",data:{labels:[],datasets:[actualDataset(true)]},options:chartOptions((event,elements)=>{if(!elements.length)return;state.detailMonth=MONTHS[elements[0].index];state.detailPage=1;updateDetailMonthChip();renderDetailTable()})});
+  state.charts.detail=new Chart(document.getElementById("detailChart"),{type:"line",data:{labels:[],datasets:[budgetDataset(true),actualDataset(true)]},options:chartOptions((event,elements)=>{if(!elements.length)return;state.detailMonth=MONTHS[elements[0].index];state.detailPage=1;updateDetailMonthChip();renderDetailTable()})});
   state.charts.costCenter=new Chart(document.getElementById("costCenterChart"),{type:"bar",data:{labels:[],datasets:[actualDataset()]},options:chartOptions()});
 }
-function budgetDataset(){return{label:"Presupuesto",data:[],backgroundColor:"rgba(22,117,173,.78)",borderColor:"#1675ad",borderRadius:5}}
+function budgetDataset(line=false){return{label:"Presupuesto",data:[],backgroundColor:"rgba(22,117,173,.78)",borderColor:"#1675ad",borderWidth:line?3:0,borderRadius:5,tension:.28,fill:false}}
 function actualDataset(line=false){return{label:"Ejecutado",data:[],backgroundColor:"rgba(21,148,116,.78)",borderColor:"#159474",borderWidth:line?3:0,borderRadius:5,tension:.28,fill:false,spanGaps:false}}
 function chartOptions(onClick){return{responsive:true,maintainAspectRatio:false,onClick,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:"rgba(100,128,143,.12)"},ticks:{callback:value=>new Intl.NumberFormat("en-US",{notation:"compact"}).format(value)}}},plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:9}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${context.raw===null?"Sin ejecución":usd.format(context.raw)}`}}}}}
 
@@ -148,7 +147,7 @@ document.querySelectorAll(".area-button").forEach(button=>button.addEventListene
 document.querySelectorAll("[data-detail-sort]").forEach(button=>button.addEventListener("click",()=>{toggleSort(state.detailSort,button.dataset.detailSort);state.detailPage=1;renderDetailTable()}));
 document.querySelectorAll("[data-cc-sort]").forEach(button=>button.addEventListener("click",()=>{toggleSort(state.ccSort,button.dataset.ccSort);state.ccPage=1;renderCcTable()}));
 el.itemSearch.addEventListener("input",renderItems);el.downloadButton.addEventListener("click",downloadData);el.closeDetailButton.addEventListener("click",()=>{state.selectedItem=null;state.detailRows=[];el.detailPanel.hidden=true;renderItems()});
-el.detailClassFilter.addEventListener("change",()=>{state.detailClass=el.detailClassFilter.value;state.detailPage=1;renderDetailTable()});el.clearDetailMonth.addEventListener("click",()=>{state.detailMonth="";state.detailPage=1;updateDetailMonthChip();renderDetailTable()});
+el.clearDetailMonth.addEventListener("click",()=>{state.detailMonth="";state.detailPage=1;updateDetailMonthChip();renderDetailTable()});
 el.previousDetailPage.addEventListener("click",()=>{state.detailPage-=1;renderDetailTable()});el.nextDetailPage.addEventListener("click",()=>{state.detailPage+=1;renderDetailTable()});
 let ccTimer;el.costCenterSearch.addEventListener("input",()=>{clearTimeout(ccTimer);ccTimer=setTimeout(runCostCenterQuery,180)});el.costCenterSearch.addEventListener("change",runCostCenterQuery);
 el.previousCcPage.addEventListener("click",()=>{state.ccPage-=1;renderCcTable()});el.nextCcPage.addEventListener("click",()=>{state.ccPage+=1;renderCcTable()});
