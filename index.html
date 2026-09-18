@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Tablero de mantenimiento y servicios generales">
-  <title>Mantenimiento y SSGG</title>
+  <meta name="description" content="Control presupuestal de mantenimiento y servicios generales">
+  <title>Presupuesto Mantenimiento y SSGG</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -13,136 +13,96 @@
     <div>
       <p class="eyebrow">CONTROL PRESUPUESTAL</p>
       <h1>Mantenimiento y Servicios Generales</h1>
-      <p class="subtitle">Presupuesto, ejecución y detalle de registros</p>
+      <p class="subtitle">Presupuesto vs. ejecutado · Valores expresados en USD</p>
     </div>
-    <button id="downloadButton" class="primary-button" type="button" disabled>
-      Descargar filtrado
-    </button>
+    <button id="downloadButton" class="primary-button" type="button" disabled>Descargar información</button>
   </header>
 
   <main>
-    <section class="panel filters-panel" aria-labelledby="filtersTitle">
-      <div class="section-heading">
+    <section class="panel area-panel" aria-labelledby="areaTitle">
+      <div class="area-copy">
+        <span class="step-number">1</span>
         <div>
-          <h2 id="filtersTitle">Filtros</h2>
+          <h2 id="areaTitle">Selecciona el área</h2>
           <p id="statusText">Cargando información…</p>
         </div>
-        <button id="clearButton" class="text-button" type="button">Limpiar filtros</button>
       </div>
-
-      <div class="filters-grid">
-        <label>
-          Mes
-          <select id="monthFilter" disabled><option value="">Todos</option></select>
-        </label>
-        <label>
-          Rubro
-          <select id="categoryFilter" disabled><option value="">Todos</option></select>
-        </label>
-        <label>
-          Partida
-          <select id="itemFilter" disabled><option value="">Todas</option></select>
-        </label>
-        <label>
-          Clase
-          <select id="classFilter" disabled><option value="">Todas</option></select>
-        </label>
-        <label class="search-field">
-          Buscar
-          <input id="searchFilter" type="search" placeholder="Glosa, cuenta, centro de costo…" disabled>
-        </label>
+      <div class="area-selector" role="group" aria-label="Seleccionar área">
+        <button class="area-button active" type="button" data-area="" aria-pressed="true">Todo</button>
+        <button class="area-button" type="button" data-area="MANTENIMIENTO" aria-pressed="false">Mantenimiento</button>
+        <button class="area-button" type="button" data-area="SERVICIOS GENERALES" aria-pressed="false">SSGG</button>
       </div>
     </section>
 
-    <section class="kpi-grid" aria-label="Indicadores principales">
+    <section class="kpi-grid" aria-label="Resumen general">
       <article class="kpi-card budget-card">
-        <span>Presupuesto seleccionado</span>
-        <strong id="budgetKpi">S/ 0</strong>
-        <small>Columna $ SEM</small>
+        <span>Presupuesto total</span><strong id="budgetKpi">$0</strong><small id="budgetCaption">Todo el presupuesto</small>
       </article>
       <article class="kpi-card actual-card">
-        <span>Ejecutado seleccionado</span>
-        <strong id="actualKpi">S/ 0</strong>
-        <small>Columna IMPORTE</small>
+        <span>Ejecutado total</span><strong id="actualKpi">$0</strong><small>Acumulado disponible</small>
       </article>
-      <article class="kpi-card">
-        <span>Nivel de ejecución</span>
-        <strong id="executionKpi">0%</strong>
-        <small>Ejecutado / presupuesto</small>
+      <article class="kpi-card deviation-card">
+        <span>Desviación en USD</span><strong id="deviationKpi">$0</strong><small>Presupuesto − ejecutado</small>
       </article>
-      <article class="kpi-card">
-        <span>Registros filtrados</span>
-        <strong id="recordsKpi">0</strong>
-        <small id="totalRecordsText">de 0 registros</small>
+      <article class="kpi-card percent-card">
+        <span>Desviación porcentual</span><strong id="deviationPercentKpi">0%</strong><small>Desviación / presupuesto</small>
       </article>
     </section>
 
-    <section class="charts-grid">
-      <article class="panel chart-panel">
-        <div class="section-heading compact">
-          <div>
-            <h2>Comparación mensual</h2>
-            <p>Presupuesto frente a ejecutado</p>
-          </div>
-        </div>
-        <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
-      </article>
-
-      <article class="panel chart-panel">
-        <div class="section-heading compact">
-          <div>
-            <h2>Principales partidas</h2>
-            <p>Las 10 partidas de mayor movimiento</p>
-          </div>
-        </div>
-        <div class="chart-wrap"><canvas id="itemsChart"></canvas></div>
-      </article>
-    </section>
-
-    <section class="panel table-panel" aria-labelledby="detailTitle">
+    <section class="panel monthly-panel" aria-labelledby="monthlyTitle">
       <div class="section-heading">
-        <div>
-          <h2 id="detailTitle">Detalle de registros</h2>
-          <p id="tableSummary">Mostrando 0 registros</p>
+        <div class="heading-with-step">
+          <span class="step-number">2</span>
+          <div><h2 id="monthlyTitle">Presupuesto y ejecutado mensual</h2><p>Totales de los 12 meses del área seleccionada</p></div>
         </div>
-        <label class="page-size-label">
-          Filas
-          <select id="pageSize">
-            <option value="25">25</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-          </select>
-        </label>
       </div>
+      <div class="monthly-layout">
+        <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
+        <div class="monthly-table-wrap">
+          <table class="monthly-table">
+            <thead><tr><th>Mes</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th><th class="number">Desv. USD</th><th class="number">Desv. %</th></tr></thead>
+            <tbody id="monthlyTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Mes</th>
-              <th>Rubro</th>
-              <th>Partida</th>
-              <th>Clase</th>
-              <th>Detalle / glosa</th>
-              <th>Centro de costo</th>
-              <th class="number">Presupuesto</th>
-              <th class="number">Ejecutado</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
+    <section class="panel items-panel" aria-labelledby="itemsTitle">
+      <div class="section-heading items-heading">
+        <div class="heading-with-step">
+          <span class="step-number">3</span>
+          <div><h2 id="itemsTitle">Comparativo de partidas por mes</h2><p>Haz clic en una partida para consultar su detalle</p></div>
+        </div>
+        <label class="item-search">Buscar partida<input id="itemSearch" type="search" placeholder="Escribe una partida…" disabled></label>
+      </div>
+      <p class="scroll-hint">Desliza horizontalmente para revisar los 12 meses →</p>
+      <div class="matrix-scroll">
+        <table class="matrix-table"><thead id="itemsTableHead"></thead><tbody id="itemsTableBody"></tbody></table>
+      </div>
+      <p id="itemsSummary" class="table-summary">0 partidas</p>
+    </section>
+
+    <section id="detailPanel" class="panel detail-panel" aria-labelledby="detailTitle" hidden>
+      <div class="section-heading">
+        <div class="heading-with-step">
+          <span class="step-number">4</span>
+          <div><p class="detail-kicker">DETALLE DE PARTIDA</p><h2 id="detailTitle">Selecciona una partida</h2><p id="detailSubtitle"></p></div>
+        </div>
+        <button id="closeDetailButton" class="text-button" type="button">Cerrar detalle</button>
+      </div>
+      <div class="detail-chart-wrap"><canvas id="detailChart"></canvas></div>
+      <div class="detail-table-scroll">
+        <table class="detail-table">
+          <thead><tr><th>Mes</th><th>Clase</th><th>Detalle / glosa</th><th>Centro de costo</th><th>Cuenta</th><th>Proveedor</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th></tr></thead>
+          <tbody id="detailTableBody"></tbody>
         </table>
       </div>
-
       <div class="pagination">
-        <button id="previousPage" type="button" disabled>Anterior</button>
-        <span id="pageText">Página 1 de 1</span>
-        <button id="nextPage" type="button" disabled>Siguiente</button>
+        <button id="previousDetailPage" type="button" disabled>Anterior</button><span id="detailPageText">Página 1 de 1</span><button id="nextDetailPage" type="button" disabled>Siguiente</button>
       </div>
     </section>
   </main>
-
   <div id="errorBox" class="error-box" role="alert" hidden></div>
-
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="app.js"></script>
