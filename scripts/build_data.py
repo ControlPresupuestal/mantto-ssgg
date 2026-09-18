@@ -37,7 +37,7 @@ def main():
     if source is None:
         raise SystemExit("No se encontró BD_ManttoSSGG.csv ni BD_ManttoSSGG.csv.csv")
 
-    dictionary_fields = ["months", "categories", "items", "shortItems", "classes", "costCenters", "accounts", "suppliers", "periods"]
+    dictionary_fields = ["months", "categories", "items", "shortItems", "classes", "costCenters", "costCenterIds", "suppliers", "periods"]
     dictionaries = {field: [] for field in dictionary_fields}
     indexes = {field: {} for field in dictionary_fields}
 
@@ -62,7 +62,6 @@ def main():
 
             detail = clean(row.get("DETALLE*")) or clean(row.get("Glosa'")) or clean(row.get("DETALLE"))
             cost_center = clean(row.get("CCOSTO")) or clean(row.get("IDCCOSTO"))
-            account = clean(row.get("CUENTA")) or clean(row.get("IDCUENTA"))
             rows.append([
                 index("months", month),
                 index("categories", row.get("Rubro'")),
@@ -71,7 +70,7 @@ def main():
                 index("classes", row.get("Clase")),
                 detail,
                 index("costCenters", cost_center),
-                index("accounts", account),
+                index("costCenterIds", row.get("IDCCOSTO")),
                 index("suppliers", row.get("RAZON_SOCIAL")),
                 index("periods", row.get("PERIODO")),
                 number(row.get("CANTIDAD")),
@@ -79,7 +78,7 @@ def main():
                 actual,
             ])
 
-    payload = {"version": 1, **dictionaries, "rows": rows}
+    payload = {"version": 2, **dictionaries, "rows": rows}
     encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT.open("wb") as raw:

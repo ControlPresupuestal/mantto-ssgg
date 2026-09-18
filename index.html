@@ -1,110 +1,118 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Control presupuestal de mantenimiento y servicios generales">
   <title>Presupuesto Mantenimiento y SSGG</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net"><link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <p class="eyebrow">CONTROL PRESUPUESTAL</p>
-      <h1>Mantenimiento y Servicios Generales</h1>
-      <p class="subtitle">Presupuesto vs. ejecutado · Valores expresados en USD</p>
-    </div>
+    <div><p class="eyebrow">CONTROL PRESUPUESTAL</p><h1>Mantenimiento y Servicios Generales</h1><p class="subtitle">Presupuesto vs. ejecutado · Valores en USD</p></div>
     <button id="downloadButton" class="primary-button" type="button" disabled>Descargar información</button>
   </header>
 
   <main>
-    <section class="panel area-panel" aria-labelledby="areaTitle">
-      <div class="area-copy">
-        <span class="step-number">1</span>
-        <div>
-          <h2 id="areaTitle">Selecciona el área</h2>
-          <p id="statusText">Cargando información…</p>
-        </div>
-      </div>
-      <div class="area-selector" role="group" aria-label="Seleccionar área">
-        <button class="area-button active" type="button" data-area="" aria-pressed="true">Todo</button>
-        <button class="area-button" type="button" data-area="MANTENIMIENTO" aria-pressed="false">Mantenimiento</button>
-        <button class="area-button" type="button" data-area="SERVICIOS GENERALES" aria-pressed="false">SSGG</button>
-      </div>
-    </section>
+    <nav class="view-tabs" aria-label="Consultas del tablero">
+      <button class="view-tab active" type="button" data-view="budgetView">Resumen por partidas</button>
+      <button class="view-tab" type="button" data-view="costCenterView">Consulta por centro de costo</button>
+    </nav>
 
-    <section class="kpi-grid" aria-label="Resumen general">
-      <article class="kpi-card budget-card">
-        <span>Presupuesto total</span><strong id="budgetKpi">$0</strong><small id="budgetCaption">Todo el presupuesto</small>
-      </article>
-      <article class="kpi-card actual-card">
-        <span>Ejecutado total</span><strong id="actualKpi">$0</strong><small>Acumulado disponible</small>
-      </article>
-      <article class="kpi-card deviation-card">
-        <span>Desviación en USD</span><strong id="deviationKpi">$0</strong><small>Presupuesto − ejecutado</small>
-      </article>
-      <article class="kpi-card percent-card">
-        <span>Desviación porcentual</span><strong id="deviationPercentKpi">0%</strong><small>Desviación / presupuesto</small>
-      </article>
-    </section>
+    <div id="budgetView">
+      <section class="panel area-panel">
+        <div class="area-copy"><span class="step-number">1</span><div><h2>Selecciona el área</h2><p id="statusText">Cargando información…</p></div></div>
+        <div class="area-selector" role="group" aria-label="Seleccionar área">
+          <button class="area-button active" type="button" data-area="" aria-pressed="true">Todo</button>
+          <button class="area-button" type="button" data-area="MANTENIMIENTO" aria-pressed="false">Mantenimiento</button>
+          <button class="area-button" type="button" data-area="SERVICIOS GENERALES" aria-pressed="false">SSGG</button>
+        </div>
+      </section>
 
-    <section class="panel monthly-panel" aria-labelledby="monthlyTitle">
-      <div class="section-heading">
-        <div class="heading-with-step">
-          <span class="step-number">2</span>
-          <div><h2 id="monthlyTitle">Presupuesto y ejecutado mensual</h2><p>Totales de los 12 meses del área seleccionada</p></div>
-        </div>
-      </div>
-      <div class="monthly-layout">
-        <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
-        <div class="monthly-table-wrap">
-          <table class="monthly-table">
-            <thead><tr><th>Mes</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th><th class="number">Desv. USD</th><th class="number">Desv. %</th></tr></thead>
-            <tbody id="monthlyTableBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+      <section class="kpi-grid" aria-label="Resumen general">
+        <article class="kpi-card"><span>Presupuesto total</span><strong id="budgetKpi">$0</strong><small id="budgetCaption">Todo el presupuesto</small></article>
+        <article class="kpi-card actual-card"><span>Ejecutado total</span><strong id="actualKpi">$0</strong><small>Acumulado disponible</small></article>
+        <article class="kpi-card deviation-card"><span>Desviación en USD</span><strong id="deviationKpi">$0</strong><small>Ejecutado − presupuesto</small></article>
+        <article class="kpi-card percent-card"><span>Desviación porcentual</span><strong id="deviationPercentKpi">0%</strong><small>Desviación / presupuesto</small></article>
+      </section>
 
-    <section class="panel items-panel" aria-labelledby="itemsTitle">
-      <div class="section-heading items-heading">
-        <div class="heading-with-step">
-          <span class="step-number">3</span>
-          <div><h2 id="itemsTitle">Comparativo de partidas por mes</h2><p>Haz clic en una partida para consultar su detalle</p></div>
+      <section class="panel">
+        <div class="section-heading"><div class="heading-with-step"><span class="step-number">2</span><div><h2>Presupuesto y ejecutado mensual</h2><p>Totales de los 12 meses del área seleccionada</p></div></div></div>
+        <div class="monthly-layout">
+          <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
+          <div class="monthly-table-wrap"><table><thead><tr><th>Mes</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th><th class="number">Desv. USD</th><th class="number">Desv. %</th></tr></thead><tbody id="monthlyTableBody"></tbody></table></div>
         </div>
-        <label class="item-search">Buscar partida<input id="itemSearch" type="search" placeholder="Escribe una partida…" disabled></label>
-      </div>
-      <p class="scroll-hint">Desliza horizontalmente para revisar los 12 meses →</p>
-      <div class="matrix-scroll">
-        <table class="matrix-table"><thead id="itemsTableHead"></thead><tbody id="itemsTableBody"></tbody></table>
-      </div>
-      <p id="itemsSummary" class="table-summary">0 partidas</p>
-    </section>
+      </section>
 
-    <section id="detailPanel" class="panel detail-panel" aria-labelledby="detailTitle" hidden>
-      <div class="section-heading">
-        <div class="heading-with-step">
-          <span class="step-number">4</span>
-          <div><p class="detail-kicker">DETALLE DE PARTIDA</p><h2 id="detailTitle">Selecciona una partida</h2><p id="detailSubtitle"></p></div>
+      <section class="panel">
+        <div class="section-heading items-heading">
+          <div class="heading-with-step"><span class="step-number">3</span><div><h2>Comparativo de partidas por mes</h2><p>Haz clic en una partida para consultar el ejecutado</p></div></div>
+          <label class="field-label">Buscar partida<input id="itemSearch" type="search" placeholder="Escribe una partida…" disabled></label>
         </div>
-        <button id="closeDetailButton" class="text-button" type="button">Cerrar detalle</button>
-      </div>
-      <div class="detail-chart-wrap"><canvas id="detailChart"></canvas></div>
-      <div class="detail-table-scroll">
-        <table class="detail-table">
-          <thead><tr><th>Mes</th><th>Clase</th><th>Detalle / glosa</th><th>Centro de costo</th><th>Cuenta</th><th>Proveedor</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th></tr></thead>
-          <tbody id="detailTableBody"></tbody>
-        </table>
-      </div>
-      <div class="pagination">
-        <button id="previousDetailPage" type="button" disabled>Anterior</button><span id="detailPageText">Página 1 de 1</span><button id="nextDetailPage" type="button" disabled>Siguiente</button>
-      </div>
-    </section>
+        <p class="scroll-hint">Desliza horizontalmente para revisar los 12 meses →</p>
+        <div class="matrix-scroll"><table class="matrix-table"><thead id="itemsTableHead"></thead><tbody id="itemsTableBody"></tbody></table></div>
+        <p id="itemsSummary" class="table-summary">0 partidas</p>
+      </section>
+
+      <section id="detailPanel" class="panel detail-panel" hidden>
+        <div class="section-heading">
+          <div class="heading-with-step"><span class="step-number">4</span><div><p class="detail-kicker">DETALLE DEL EJECUTADO</p><h2 id="detailTitle">Selecciona una partida</h2><p id="detailSubtitle"></p></div></div>
+          <button id="closeDetailButton" class="text-button" type="button">Cerrar detalle</button>
+        </div>
+        <div class="detail-controls">
+          <label class="field-label">Clase<select id="detailClassFilter"><option value="">Todas las clases</option></select></label>
+          <button id="clearDetailMonth" class="filter-chip" type="button">Todos los meses</button>
+          <span class="control-help">Haz clic en un mes del gráfico para filtrar la tabla.</span>
+        </div>
+        <div class="detail-chart-wrap"><canvas id="detailChart"></canvas></div>
+        <div class="detail-table-scroll"><table class="detail-table">
+          <thead><tr>
+            <th><button class="sort-button" data-detail-sort="month">Mes</button></th>
+            <th><button class="sort-button" data-detail-sort="className">Clase</button></th>
+            <th><button class="sort-button" data-detail-sort="detail">Detalle / glosa</button></th>
+            <th><button class="sort-button" data-detail-sort="costCenterId">ID costo</button></th>
+            <th><button class="sort-button" data-detail-sort="costCenter">Centro de costo</button></th>
+            <th><button class="sort-button" data-detail-sort="supplier">Proveedor</button></th>
+            <th class="number"><button class="sort-button" data-detail-sort="actual">Ejecutado</button></th>
+          </tr></thead><tbody id="detailTableBody"></tbody>
+        </table></div>
+        <div class="pagination"><button id="previousDetailPage" type="button" disabled>Anterior</button><span id="detailPageText">Página 1 de 1</span><button id="nextDetailPage" type="button" disabled>Siguiente</button></div>
+      </section>
+    </div>
+
+    <div id="costCenterView" hidden>
+      <section class="panel cost-search-panel">
+        <div class="heading-with-step"><span class="step-number">1</span><div><h2>Consulta por centro de costo</h2><p>Busca por código o por nombre para revisar todo su consumo.</p></div></div>
+        <label class="field-label cost-search">ID o centro de costo<input id="costCenterSearch" type="search" list="costCenterOptions" placeholder="Ejemplo: TALLER" autocomplete="off" disabled><datalist id="costCenterOptions"></datalist></label>
+      </section>
+      <section id="costCenterResults" hidden>
+        <div class="cc-kpi-grid">
+          <article class="kpi-card actual-card"><span>Consumo ejecutado</span><strong id="ccActualKpi">$0</strong><small id="ccSelectionLabel">Centro seleccionado</small></article>
+          <article class="kpi-card"><span>Registros</span><strong id="ccRecordsKpi">0</strong><small>Movimientos encontrados</small></article>
+        </div>
+        <section class="panel">
+          <div class="section-heading"><div><h2>Consumo mensual</h2><p id="ccChartSubtitle"></p></div></div>
+          <div class="cc-chart-wrap"><canvas id="costCenterChart"></canvas></div>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><h2>Detalle del centro de costo</h2><p id="ccTableSummary"></p></div></div>
+          <div class="detail-table-scroll"><table class="detail-table">
+            <thead><tr>
+              <th><button class="sort-button" data-cc-sort="month">Mes</button></th>
+              <th><button class="sort-button" data-cc-sort="className">Clase</button></th>
+              <th><button class="sort-button" data-cc-sort="detail">Detalle / glosa</button></th>
+              <th><button class="sort-button" data-cc-sort="costCenterId">ID costo</button></th>
+              <th><button class="sort-button" data-cc-sort="costCenter">Centro de costo</button></th>
+              <th><button class="sort-button" data-cc-sort="supplier">Proveedor</button></th>
+              <th class="number"><button class="sort-button" data-cc-sort="actual">Ejecutado</button></th>
+            </tr></thead><tbody id="ccTableBody"></tbody>
+          </table></div>
+          <div class="pagination"><button id="previousCcPage" type="button" disabled>Anterior</button><span id="ccPageText">Página 1 de 1</span><button id="nextCcPage" type="button" disabled>Siguiente</button></div>
+        </section>
+      </section>
+      <div id="costCenterEmpty" class="empty-state">Escribe un código o nombre para comenzar la consulta.</div>
+    </div>
   </main>
   <div id="errorBox" class="error-box" role="alert" hidden></div>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script src="app.js"></script>
 </body>
 </html>
