@@ -7,9 +7,9 @@ const PAGE_SIZE=50;
 const state={
   rows:[],view:"budgetView",area:"",areaRows:[],itemSummaries:[],selectedItem:null,
   detailRows:[],detailMonth:"",detailPage:1,detailSort:{key:"month",dir:1},
-  costCenters:[],ccRows:[],ccPage:1,ccSort:{key:"month",dir:1},charts:{}
+  costCenters:[],providers:[],ccBaseRows:[],ccRows:[],ccClass:"",ccPage:1,ccSort:{key:"month",dir:1},charts:{}
 };
-const ids=["statusText","downloadButton","budgetKpi","actualKpi","deviationKpi","deviationPercentKpi","budgetCaption","monthlyTableBody","itemSearch","itemsTableHead","itemsTableBody","itemsSummary","detailPanel","detailTitle","detailSubtitle","clearDetailMonth","detailTableBody","closeDetailButton","previousDetailPage","nextDetailPage","detailPageText","costCenterSearch","costCenterOptions","costCenterResults","costCenterEmpty","ccActualKpi","ccRecordsKpi","ccSelectionLabel","ccChartSubtitle","ccTableSummary","ccTableBody","previousCcPage","nextCcPage","ccPageText","errorBox"];
+const ids=["statusText","budgetKpi","actualKpi","deviationKpi","deviationPercentKpi","budgetCaption","monthlyTableBody","monthlyTableFoot","itemSearch","itemsTableHead","itemsTableBody","itemsSummary","detailPanel","detailTitle","detailSubtitle","clearDetailMonth","detailTableBody","closeDetailButton","downloadDetailButton","previousDetailPage","nextDetailPage","detailPageText","costCenterSearch","costCenterOptions","providerSearch","providerOptions","detailSearch","clearConsumptionFilters","costCenterResults","costCenterEmpty","ccActualKpi","ccRecordsKpi","ccSelectionLabel","ccChartSubtitle","classChartSubtitle","ccTableSummary","ccTableBody","downloadCcButton","previousCcPage","nextCcPage","ccPageText","errorBox"];
 const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
 const usd=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0});
 const number=new Intl.NumberFormat("es-PE");
@@ -47,7 +47,7 @@ async function loadData(){
   initialize();
 }
 
-function initialize(){createCharts();buildItemsHeader();buildCostCenterOptions();el.itemSearch.disabled=false;el.costCenterSearch.disabled=false;el.downloadButton.disabled=false;el.statusText.textContent=`${number.format(state.rows.length)} registros disponibles`;applyArea()}
+function initialize(){createCharts();buildItemsHeader();buildQueryOptions();el.itemSearch.disabled=false;el.costCenterSearch.disabled=false;el.providerSearch.disabled=false;el.detailSearch.disabled=false;el.statusText.textContent=`${number.format(state.rows.length)} registros disponibles`;applyArea()}
 function blankTotals(){return{budget:0,actual:0}}
 function addTotals(target,row){target.budget+=row.budget;target.actual+=row.actual;return target}
 function totals(rows){return rows.reduce(addTotals,blankTotals())}
@@ -72,6 +72,7 @@ function renderMonthly(){
   el.monthlyTableBody.replaceChildren();const fragment=document.createDocumentFragment();values.forEach((value,index)=>{
     const executed=hasExecution(value),dev=deviation(value),row=document.createElement("tr");appendCell(row,MONTHS[index]);appendCell(row,usd.format(value.budget),"number");appendCell(row,executed?usd.format(value.actual):"—","number");appendCell(row,executed?usd.format(dev):"—",executed?`number ${metricClass(dev)}`:"number");appendCell(row,executed?formatPercent(deviationPercent(value)):"—",executed?`number ${metricClass(dev)}`:"number");fragment.appendChild(row)
   });el.monthlyTableBody.appendChild(fragment);
+  const total=totals(state.areaRows),dev=deviation(total),row=document.createElement("tr");appendCell(row,"TOTAL GENERAL");appendCell(row,usd.format(total.budget),"number");appendCell(row,usd.format(total.actual),"number");appendCell(row,usd.format(dev),`number ${metricClass(dev)}`);appendCell(row,formatPercent(deviationPercent(total)),`number ${metricClass(dev)}`);el.monthlyTableFoot.replaceChildren(row);
 }
 
 function buildItemSummaries(){
@@ -106,15 +107,31 @@ function renderDetailTable(){
 }
 function updateDetailMonthChip(){el.clearDetailMonth.textContent=state.detailMonth?`${state.detailMonth} ×`:"Todos los meses";el.clearDetailMonth.classList.toggle("active",Boolean(state.detailMonth))}
 
-function buildCostCenterOptions(){
-  const map=new Map();state.rows.filter(row=>row.actual!==0&&(row.costCenterId||row.costCenter)).forEach(row=>{const key=`${row.costCenterId}|||${row.costCenter}`;if(!map.has(key)){const display=[row.costCenterId,row.costCenter].filter(Boolean).join(" — ");map.set(key,{id:row.costCenterId,name:row.costCenter,display})}});state.costCenters=[...map.values()].sort((a,b)=>a.display.localeCompare(b.display,"es"));const fragment=document.createDocumentFragment();state.costCenters.forEach(center=>{const option=document.createElement("option");option.value=center.display;fragment.appendChild(option)});el.costCenterOptions.replaceChildren(fragment);
+function buildQueryOptions(){
+  const centers=new Map(),providers=new Set();state.rows.filter(row=>row.actual!==0).forEach(row=>{
+    if(row.costCenterId||row.costCenter){const key=`${row.costCenterId}|||${row.costCenter}`;if(!centers.has(key))centers.set(key,{id:row.costCenterId,name:row.costCenter,display:[row.costCenterId,row.costCenter].filter(Boolean).join(" — ")})}
+    if(row.supplier)providers.add(row.supplier);
+  });
+  state.costCenters=[...centers.values()].sort((a,b)=>a.display.localeCompare(b.display,"es"));state.providers=[...providers].sort((a,b)=>a.localeCompare(b,"es"));
+  const centerFragment=document.createDocumentFragment();state.costCenters.forEach(center=>{const option=document.createElement("option");option.value=center.display;centerFragment.appendChild(option)});el.costCenterOptions.replaceChildren(centerFragment);
+  const providerFragment=document.createDocumentFragment();state.providers.forEach(provider=>{const option=document.createElement("option");option.value=provider;providerFragment.appendChild(option)});el.providerOptions.replaceChildren(providerFragment);
 }
-function runCostCenterQuery(){
-  const query=clean(el.costCenterSearch.value).toLocaleLowerCase("es");if(query.length<2){state.ccRows=[];el.costCenterResults.hidden=true;el.costCenterEmpty.hidden=false;return}
-  const exact=state.costCenters.find(center=>center.display.toLocaleLowerCase("es")===query);const matches=exact?[exact]:state.costCenters.filter(center=>center.display.toLocaleLowerCase("es").includes(query));const keys=new Set(matches.map(center=>`${center.id}|||${center.name}`));state.ccRows=state.rows.filter(row=>row.actual!==0&&keys.has(`${row.costCenterId}|||${row.costCenter}`));state.ccPage=1;state.ccSort={key:"month",dir:1};
-  if(!state.ccRows.length){el.costCenterResults.hidden=true;el.costCenterEmpty.hidden=false;el.costCenterEmpty.textContent="No se encontraron consumos para ese centro de costo.";return}
-  el.costCenterEmpty.hidden=true;el.costCenterResults.hidden=false;const total=state.ccRows.reduce((sum,row)=>sum+row.actual,0),label=exact?exact.display:`${matches.length} centros coincidentes`;el.ccActualKpi.textContent=usd.format(total);el.ccRecordsKpi.textContent=number.format(state.ccRows.length);el.ccSelectionLabel.textContent=label;el.ccChartSubtitle.textContent=label;
-  const values=monthlyTotals(state.ccRows);state.charts.costCenter.resize();state.charts.costCenter.data.labels=SHORT_MONTHS;state.charts.costCenter.data.datasets[0].data=values.map(value=>hasExecution(value)?value.actual:null);state.charts.costCenter.update();renderCcTable();
+function runConsumptionQuery(){
+  const centerQuery=clean(el.costCenterSearch.value).toLocaleLowerCase("es"),providerQuery=clean(el.providerSearch.value).toLocaleLowerCase("es"),detailQuery=clean(el.detailSearch.value).toLocaleLowerCase("es");
+  if(!centerQuery&&!providerQuery&&!detailQuery){state.ccBaseRows=[];state.ccRows=[];el.costCenterResults.hidden=true;el.costCenterEmpty.hidden=false;el.costCenterEmpty.textContent="Ingresa un centro de costo, proveedor o palabra del detalle para comenzar.";return}
+  state.ccBaseRows=state.rows.filter(row=>row.actual!==0&&(!centerQuery||`${row.costCenterId} — ${row.costCenter}`.toLocaleLowerCase("es").includes(centerQuery))&&(!providerQuery||row.supplier.toLocaleLowerCase("es").includes(providerQuery))&&(!detailQuery||row.detail.toLocaleLowerCase("es").includes(detailQuery)));
+  state.ccClass="";state.ccPage=1;state.ccSort={key:"month",dir:1};
+  if(!state.ccBaseRows.length){state.ccRows=[];el.costCenterResults.hidden=true;el.costCenterEmpty.hidden=false;el.costCenterEmpty.textContent="No se encontraron consumos con esos filtros.";return}
+  el.costCenterEmpty.hidden=true;el.costCenterResults.hidden=false;renderClassChart();applyConsumptionClass();
+}
+function renderClassChart(){
+  const groups=new Map();state.ccBaseRows.forEach(row=>groups.set(row.className||"SIN CLASE",(groups.get(row.className||"SIN CLASE")||0)+row.actual));
+  const entries=[...groups.entries()].sort((a,b)=>b[1]-a[1]);state.charts.class.data.labels=entries.map(entry=>entry[0]);state.charts.class.data.datasets[0].data=entries.map(entry=>entry[1]);state.charts.class.update();
+}
+function applyConsumptionClass(){
+  state.ccRows=state.ccClass?state.ccBaseRows.filter(row=>(row.className||"SIN CLASE")===state.ccClass):[...state.ccBaseRows];state.ccPage=1;
+  const total=state.ccRows.reduce((sum,row)=>sum+row.actual,0),filters=[clean(el.costCenterSearch.value),clean(el.providerSearch.value),clean(el.detailSearch.value)].filter(Boolean),label=filters.join(" · ");el.ccActualKpi.textContent=usd.format(total);el.ccRecordsKpi.textContent=number.format(state.ccRows.length);el.ccSelectionLabel.textContent=state.ccClass||"Todos los consumos";el.ccChartSubtitle.textContent=label;el.classChartSubtitle.textContent=state.ccClass?`${state.ccClass} · haz clic otra vez para limpiar`:"Haz clic en una clase para filtrar";
+  const values=monthlyTotals(state.ccRows);state.charts.costCenter.resize();state.charts.class.resize();state.charts.costCenter.data.labels=SHORT_MONTHS;state.charts.costCenter.data.datasets[0].data=values.map(value=>hasExecution(value)?value.actual:null);state.charts.costCenter.update();renderCcTable();
 }
 function renderCcTable(){
   const sorted=sortRows(state.ccRows,state.ccSort),pages=Math.max(1,Math.ceil(sorted.length/PAGE_SIZE));state.ccPage=Math.min(state.ccPage,pages);const start=(state.ccPage-1)*PAGE_SIZE,rows=sorted.slice(start,start+PAGE_SIZE);el.ccTableBody.replaceChildren();const fragment=document.createDocumentFragment();
@@ -131,14 +148,20 @@ function createCharts(){
   state.charts.monthly=new Chart(document.getElementById("monthlyChart"),{type:"bar",data:{labels:[],datasets:[budgetDataset(),actualDataset()]},options:chartOptions()});
   state.charts.detail=new Chart(document.getElementById("detailChart"),{type:"line",data:{labels:[],datasets:[budgetDataset(true),actualDataset(true)]},options:chartOptions((event,elements)=>{if(!elements.length)return;state.detailMonth=MONTHS[elements[0].index];state.detailPage=1;updateDetailMonthChip();renderDetailTable()})});
   state.charts.costCenter=new Chart(document.getElementById("costCenterChart"),{type:"bar",data:{labels:[],datasets:[actualDataset()]},options:chartOptions()});
+  state.charts.class=new Chart(document.getElementById("classChart"),{type:"doughnut",data:{labels:[],datasets:[{data:[],backgroundColor:["#0c4f7d","#159474","#168ca0","#72b7a5","#4a87ad","#9acfc2"],borderColor:"#ffffff",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,onClick:(event,elements)=>{if(!elements.length)return;const selected=state.charts.class.data.labels[elements[0].index];state.ccClass=state.ccClass===selected?"":selected;applyConsumptionClass()},plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:9}},tooltip:{callbacks:{label:context=>`${context.label}: ${usd.format(context.raw)}`}}}}});
 }
 function budgetDataset(line=false){return{label:"Presupuesto",data:[],backgroundColor:"rgba(22,117,173,.78)",borderColor:"#1675ad",borderWidth:line?3:0,borderRadius:5,tension:.28,fill:false}}
 function actualDataset(line=false){return{label:"Ejecutado",data:[],backgroundColor:"rgba(21,148,116,.78)",borderColor:"#159474",borderWidth:line?3:0,borderRadius:5,tension:.28,fill:false,spanGaps:false}}
 function chartOptions(onClick){return{responsive:true,maintainAspectRatio:false,onClick,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:"rgba(100,128,143,.12)"},ticks:{callback:value=>new Intl.NumberFormat("en-US",{notation:"compact"}).format(value)}}},plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:9}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${context.raw===null?"Sin ejecución":usd.format(context.raw)}`}}}}}
 
 function setView(view){state.view=view;document.getElementById("budgetView").hidden=view!=="budgetView";document.getElementById("costCenterView").hidden=view!=="costCenterView";document.querySelectorAll(".view-tab").forEach(button=>button.classList.toggle("active",button.dataset.view===view))}
-function downloadData(){
-  let rows=state.view==="costCenterView"?state.ccRows:(state.selectedItem?getFilteredDetailRows():state.areaRows);const exportRows=rows.map(row=>({AREA:row.category,MES:row.month,PARTIDA:row.item,CLASE:row.className,DETALLE:row.detail,IDCCOSTO:row.costCenterId,CCOSTO:row.costCenter,PROVEEDOR:row.supplier,PRESUPUESTO_USD:row.budget,EJECUTADO_USD:row.actual}));const csv="\ufeff"+Papa.unparse(exportRows,{delimiter:";"}),blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download=`Mantto_SSGG_${new Date().toISOString().slice(0,10)}.csv`;link.click();URL.revokeObjectURL(link.href);
+function downloadWorkbook(rows,fileName){
+  if(!rows.length)return;
+  const headers=["Mes","Clase","Detalle / glosa","ID costo","Centro de costo","Proveedor","Ejecutado USD"],data=[headers,...rows.map(row=>[row.month,row.className,row.detail,row.costCenterId,row.costCenter,row.supplier,row.actual])],sheet=XLSX.utils.aoa_to_sheet(data);
+  sheet["!autofilter"]={ref:`A1:G${data.length}`};sheet["!cols"]=[{wch:12},{wch:20},{wch:48},{wch:16},{wch:30},{wch:32},{wch:16}];sheet["!freeze"]={xSplit:0,ySplit:1};
+  headers.forEach((_,index)=>{const cell=sheet[XLSX.utils.encode_cell({r:0,c:index})];cell.s={fill:{fgColor:{rgb:"0C4F7D"}},font:{bold:true,color:{rgb:"FFFFFF"}},alignment:{horizontal:"center"}}});
+  for(let row=1;row<data.length;row+=1){const cell=sheet[XLSX.utils.encode_cell({r:row,c:6})];if(cell){cell.t="n";cell.z='[$$-en-US]#,##0.00'}}
+  const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,sheet,"Detalle ejecutado");XLSX.writeFile(workbook,`${fileName}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 function showError(message){el.statusText.textContent="No se pudo cargar la información";el.errorBox.textContent=message;el.errorBox.hidden=false}
 
@@ -146,9 +169,11 @@ document.querySelectorAll(".view-tab").forEach(button=>button.addEventListener("
 document.querySelectorAll(".area-button").forEach(button=>button.addEventListener("click",()=>{state.area=button.dataset.area;applyArea()}));
 document.querySelectorAll("[data-detail-sort]").forEach(button=>button.addEventListener("click",()=>{toggleSort(state.detailSort,button.dataset.detailSort);state.detailPage=1;renderDetailTable()}));
 document.querySelectorAll("[data-cc-sort]").forEach(button=>button.addEventListener("click",()=>{toggleSort(state.ccSort,button.dataset.ccSort);state.ccPage=1;renderCcTable()}));
-el.itemSearch.addEventListener("input",renderItems);el.downloadButton.addEventListener("click",downloadData);el.closeDetailButton.addEventListener("click",()=>{state.selectedItem=null;state.detailRows=[];el.detailPanel.hidden=true;renderItems()});
+el.itemSearch.addEventListener("input",renderItems);el.downloadDetailButton.addEventListener("click",()=>downloadWorkbook(getFilteredDetailRows(),"Detalle_partida"));el.downloadCcButton.addEventListener("click",()=>downloadWorkbook(sortRows(state.ccRows,state.ccSort),"Consulta_consumos"));el.closeDetailButton.addEventListener("click",()=>{state.selectedItem=null;state.detailRows=[];el.detailPanel.hidden=true;renderItems()});
 el.clearDetailMonth.addEventListener("click",()=>{state.detailMonth="";state.detailPage=1;updateDetailMonthChip();renderDetailTable()});
 el.previousDetailPage.addEventListener("click",()=>{state.detailPage-=1;renderDetailTable()});el.nextDetailPage.addEventListener("click",()=>{state.detailPage+=1;renderDetailTable()});
-let ccTimer;el.costCenterSearch.addEventListener("input",()=>{clearTimeout(ccTimer);ccTimer=setTimeout(runCostCenterQuery,180)});el.costCenterSearch.addEventListener("change",runCostCenterQuery);
+let ccTimer;function queueConsumptionQuery(){clearTimeout(ccTimer);ccTimer=setTimeout(runConsumptionQuery,180)}
+[el.costCenterSearch,el.providerSearch,el.detailSearch].forEach(input=>{input.addEventListener("input",queueConsumptionQuery);input.addEventListener("change",runConsumptionQuery)});
+el.clearConsumptionFilters.addEventListener("click",()=>{el.costCenterSearch.value="";el.providerSearch.value="";el.detailSearch.value="";state.ccClass="";runConsumptionQuery()});
 el.previousCcPage.addEventListener("click",()=>{state.ccPage-=1;renderCcTable()});el.nextCcPage.addEventListener("click",()=>{state.ccPage+=1;renderCcTable()});
 loadData();

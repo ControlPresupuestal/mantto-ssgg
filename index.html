@@ -9,13 +9,12 @@
 <body>
   <header class="topbar">
     <div><p class="eyebrow">CONTROL PRESUPUESTAL</p><h1>Mantenimiento y Servicios Generales</h1><p class="subtitle">Presupuesto vs. ejecutado · Valores en USD</p></div>
-    <button id="downloadButton" class="primary-button" type="button" disabled>Descargar información</button>
   </header>
 
   <main>
     <nav class="view-tabs" aria-label="Consultas del tablero">
       <button class="view-tab active" type="button" data-view="budgetView">Resumen por partidas</button>
-      <button class="view-tab" type="button" data-view="costCenterView">Consulta por centro de costo</button>
+      <button class="view-tab" type="button" data-view="costCenterView">Consulta de consumos</button>
     </nav>
 
     <div id="budgetView">
@@ -39,7 +38,7 @@
         <div class="section-heading"><div class="heading-with-step"><span class="step-number">2</span><div><h2>Presupuesto y ejecutado mensual</h2><p>Totales de los 12 meses del área seleccionada</p></div></div></div>
         <div class="monthly-layout">
           <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
-          <div class="monthly-table-wrap"><table><thead><tr><th>Mes</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th><th class="number">Desv. USD</th><th class="number">Desv. %</th></tr></thead><tbody id="monthlyTableBody"></tbody></table></div>
+          <div class="monthly-table-wrap"><table><thead><tr><th>Mes</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th><th class="number">Desv. USD</th><th class="number">Desv. %</th></tr></thead><tbody id="monthlyTableBody"></tbody><tfoot id="monthlyTableFoot"></tfoot></table></div>
         </div>
       </section>
 
@@ -56,7 +55,7 @@
       <section id="detailPanel" class="panel detail-panel" hidden>
         <div class="section-heading">
           <div class="heading-with-step"><span class="step-number">4</span><div><p class="detail-kicker">DETALLE DEL EJECUTADO</p><h2 id="detailTitle">Selecciona una partida</h2><p id="detailSubtitle"></p></div></div>
-          <button id="closeDetailButton" class="text-button" type="button">Cerrar detalle</button>
+          <div class="heading-actions"><button id="downloadDetailButton" class="excel-button" type="button">Descargar Excel</button><button id="closeDetailButton" class="text-button" type="button">Cerrar detalle</button></div>
         </div>
         <div class="detail-controls">
           <button id="clearDetailMonth" class="filter-chip" type="button">Todos los meses</button>
@@ -79,21 +78,32 @@
     </div>
 
     <div id="costCenterView" hidden>
-      <section class="panel cost-search-panel">
-        <div class="heading-with-step"><span class="step-number">1</span><div><h2>Consulta por centro de costo</h2><p>Busca por código o por nombre para revisar todo su consumo.</p></div></div>
-        <label class="field-label cost-search">ID o centro de costo<input id="costCenterSearch" type="search" list="costCenterOptions" placeholder="Ejemplo: TALLER" autocomplete="off" disabled><datalist id="costCenterOptions"></datalist></label>
+      <section class="panel consumption-search-panel">
+        <div class="heading-with-step"><span class="step-number">1</span><div><h2>Consulta de consumos</h2><p>Usa uno o varios filtros para explorar el ejecutado.</p></div></div>
+        <div class="query-grid">
+          <label class="field-label">Centro de costo<input id="costCenterSearch" type="search" list="costCenterOptions" placeholder="Código o nombre" autocomplete="off" disabled><datalist id="costCenterOptions"></datalist></label>
+          <label class="field-label">Proveedor<input id="providerSearch" type="search" list="providerOptions" placeholder="Nombre del proveedor" autocomplete="off" disabled><datalist id="providerOptions"></datalist></label>
+          <label class="field-label">Glosa o detalle<input id="detailSearch" type="search" placeholder="Palabra contenida" disabled></label>
+          <button id="clearConsumptionFilters" class="clear-query-button" type="button">Limpiar filtros</button>
+        </div>
       </section>
       <section id="costCenterResults" hidden>
         <div class="cc-kpi-grid">
           <article class="kpi-card actual-card"><span>Consumo ejecutado</span><strong id="ccActualKpi">$0</strong><small id="ccSelectionLabel">Centro seleccionado</small></article>
           <article class="kpi-card"><span>Registros</span><strong id="ccRecordsKpi">0</strong><small>Movimientos encontrados</small></article>
         </div>
-        <section class="panel">
-          <div class="section-heading"><div><h2>Consumo mensual</h2><p id="ccChartSubtitle"></p></div></div>
-          <div class="cc-chart-wrap"><canvas id="costCenterChart"></canvas></div>
+        <section class="query-charts">
+          <article class="panel">
+            <div class="section-heading"><div><h2>Consumo mensual</h2><p id="ccChartSubtitle"></p></div></div>
+            <div class="cc-chart-wrap"><canvas id="costCenterChart"></canvas></div>
+          </article>
+          <article class="panel">
+            <div class="section-heading"><div><h2>Consumo por clase</h2><p id="classChartSubtitle">Haz clic en una clase para filtrar</p></div></div>
+            <div class="class-chart-wrap"><canvas id="classChart"></canvas></div>
+          </article>
         </section>
         <section class="panel">
-          <div class="section-heading"><div><h2>Detalle del centro de costo</h2><p id="ccTableSummary"></p></div></div>
+          <div class="section-heading"><div><h2>Detalle de consumos</h2><p id="ccTableSummary"></p></div><button id="downloadCcButton" class="excel-button" type="button">Descargar Excel</button></div>
           <div class="detail-table-scroll"><table class="detail-table">
             <thead><tr>
               <th><button class="sort-button" data-cc-sort="month">Mes</button></th>
@@ -108,10 +118,10 @@
           <div class="pagination"><button id="previousCcPage" type="button" disabled>Anterior</button><span id="ccPageText">Página 1 de 1</span><button id="nextCcPage" type="button" disabled>Siguiente</button></div>
         </section>
       </section>
-      <div id="costCenterEmpty" class="empty-state">Escribe un código o nombre para comenzar la consulta.</div>
+      <div id="costCenterEmpty" class="empty-state">Ingresa un centro de costo, proveedor o palabra del detalle para comenzar.</div>
     </div>
   </main>
   <div id="errorBox" class="error-box" role="alert" hidden></div>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script><script src="app.js"></script>
 </body>
 </html>
