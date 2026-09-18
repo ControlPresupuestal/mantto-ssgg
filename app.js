@@ -7,9 +7,10 @@ const PAGE_SIZE=50;
 const state={
   rows:[],view:"budgetView",area:"",areaRows:[],itemSummaries:[],selectedItem:null,
   detailRows:[],detailMonth:"",detailPage:1,detailSort:{key:"month",dir:1},
-  costCenters:[],providers:[],ccBaseRows:[],ccRows:[],ccClass:"",ccPage:1,ccSort:{key:"month",dir:1},charts:{}
+  costCenters:[],providers:[],ccBaseRows:[],ccRows:[],ccClass:"",ccPage:1,ccSort:{key:"month",dir:1},
+  laborArea:"",laborItem:"",laborMonth:"",laborSearch:"",laborEntries:[],selectedLaborKey:"",laborDetailRows:[],laborPage:1,laborSort:{key:"month",dir:1},charts:{}
 };
-const ids=["statusText","budgetKpi","actualKpi","deviationKpi","deviationPercentKpi","budgetCaption","monthlyTableBody","monthlyTableFoot","itemSearch","itemsTableHead","itemsTableBody","itemsTableFoot","itemsSummary","detailPanel","detailTitle","detailSubtitle","clearDetailMonth","detailTableBody","closeDetailButton","downloadDetailButton","previousDetailPage","nextDetailPage","detailPageText","costCenterSearch","costCenterOptions","providerSearch","providerOptions","detailSearch","clearConsumptionFilters","costCenterResults","costCenterEmpty","ccActualKpi","ccRecordsKpi","ccSelectionLabel","ccChartSubtitle","classChartSubtitle","ccTableSummary","ccTableBody","downloadCcButton","previousCcPage","nextCcPage","ccPageText","errorBox"];
+const ids=["statusText","budgetKpi","actualKpi","deviationKpi","deviationPercentKpi","budgetCaption","monthlyTableBody","monthlyTableFoot","itemSearch","itemsTableHead","itemsTableBody","itemsTableFoot","itemsSummary","detailPanel","detailTitle","detailSubtitle","clearDetailMonth","detailTableBody","closeDetailButton","downloadDetailButton","previousDetailPage","nextDetailPage","detailPageText","costCenterSearch","costCenterOptions","providerSearch","providerOptions","detailSearch","clearConsumptionFilters","costCenterResults","costCenterEmpty","ccActualKpi","ccRecordsKpi","ccSelectionLabel","ccChartSubtitle","classChartSubtitle","ccTableSummary","ccTableBody","downloadCcButton","previousCcPage","nextCcPage","ccPageText","laborItemFilter","laborMonthFilter","laborSearch","clearLaborFilters","laborBudgetKpi","laborActualKpi","laborDeviationKpi","laborDeviationPercentKpi","laborScopeLabel","laborMonthlyTableBody","laborMonthlyTableFoot","laborTableBody","laborTableSummary","laborDetailPanel","laborDetailTitle","clearLaborSelection","laborDetailTableBody","downloadLaborButton","previousLaborPage","nextLaborPage","laborPageText","laborNotice","errorBox"];
 const el=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
 const usd=new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",minimumFractionDigits:0,maximumFractionDigits:0});
 const number=new Intl.NumberFormat("es-PE");
@@ -24,17 +25,17 @@ function prepareRow(row){row.search=[row.item,row.shortItem,row.detail,row.costC
 function normalizeRow(row){return prepareRow({
   month:clean(row["MES'"]).toUpperCase(),category:clean(row["Rubro'"]),item:clean(row["Partida'"]),shortItem:clean(row["Partida*"]),className:clean(row.Clase),
   detail:clean(row["DETALLE*"])||clean(row["Glosa'"])||clean(row.DETALLE),costCenterId:clean(row.IDCCOSTO),costCenter:clean(row.CCOSTO)||clean(row.IDCCOSTO),
-  supplier:clean(row.RAZON_SOCIAL),period:clean(row.PERIODO),quantity:toNumber(row.CANTIDAD),budget:toNumber(row["$ SEM"]),actual:toNumber(row.IMPORTE)
+  supplier:clean(row.RAZON_SOCIAL),period:clean(row.PERIODO),quantity:toNumber(row.CANTIDAD),budget:toNumber(row["$ SEM"]),actual:toNumber(row.IMPORTE),laborId:clean(row.IDLABOR),labor:clean(row.LABOR)
 })}
 function dictionaryValue(dictionary,position){return position>=0?dictionary[position]||"":""}
 async function loadOptimizedData(){
   const response=await fetch(OPTIMIZED_DATA_FILE);if(!response.ok)throw new Error(`Archivo optimizado no disponible (${response.status})`);
   const bytes=new Uint8Array(await response.arrayBuffer());let jsonText;
   if(bytes[0]===0x1f&&bytes[1]===0x8b){if(typeof DecompressionStream==="undefined")throw new Error("Navegador sin descompresión rápida");const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));jsonText=await new Response(stream).text()}else jsonText=new TextDecoder().decode(bytes);
-  const data=JSON.parse(jsonText);if(data.version!==2)throw new Error("Versión de datos pendiente de actualización");
+  const data=JSON.parse(jsonText);if(data.version!==3)throw new Error("Versión de datos pendiente de actualización");
   return data.rows.map(row=>prepareRow({
     month:dictionaryValue(data.months,row[0]),category:dictionaryValue(data.categories,row[1]),item:dictionaryValue(data.items,row[2]),shortItem:dictionaryValue(data.shortItems,row[3]),className:dictionaryValue(data.classes,row[4]),detail:row[5]||"",
-    costCenter:dictionaryValue(data.costCenters,row[6]),costCenterId:dictionaryValue(data.costCenterIds,row[7]),supplier:dictionaryValue(data.suppliers,row[8]),period:dictionaryValue(data.periods,row[9]),quantity:row[10]||0,budget:row[11]||0,actual:row[12]||0
+    costCenter:dictionaryValue(data.costCenters,row[6]),costCenterId:dictionaryValue(data.costCenterIds,row[7]),supplier:dictionaryValue(data.suppliers,row[8]),period:dictionaryValue(data.periods,row[9]),quantity:row[10]||0,budget:row[11]||0,actual:row[12]||0,laborId:dictionaryValue(data.laborIds,row[13]),labor:dictionaryValue(data.labors,row[14])
   }))
 }
 function parseCsv(url){return new Promise((resolve,reject)=>Papa.parse(url,{download:true,header:true,skipEmptyLines:"greedy",worker:true,complete:r=>r.data?.length?resolve(r.data):reject(new Error("CSV vacío")),error:reject}))}
@@ -47,7 +48,7 @@ async function loadData(){
   initialize();
 }
 
-function initialize(){createCharts();buildItemsHeader();buildQueryOptions();el.itemSearch.disabled=false;el.costCenterSearch.disabled=false;el.providerSearch.disabled=false;el.detailSearch.disabled=false;el.statusText.textContent=`${number.format(state.rows.length)} registros disponibles`;applyArea()}
+function initialize(){createCharts();buildItemsHeader();buildQueryOptions();buildLaborOptions();el.itemSearch.disabled=false;el.costCenterSearch.disabled=false;el.providerSearch.disabled=false;el.detailSearch.disabled=false;el.laborItemFilter.disabled=false;el.laborMonthFilter.disabled=false;el.laborSearch.disabled=false;el.statusText.textContent=`${number.format(state.rows.length)} registros disponibles`;applyArea();renderLaborView()}
 function blankTotals(){return{budget:0,actual:0}}
 function addTotals(target,row){target.budget+=row.budget;target.actual+=row.actual;return target}
 function totals(rows){return rows.reduce(addTotals,blankTotals())}
@@ -140,6 +141,41 @@ function renderCcTable(){
   rows.forEach(record=>{const row=document.createElement("tr");[record.month,record.className,record.detail,record.costCenterId,record.costCenter,record.supplier].forEach(value=>appendCell(row,value||"—"));appendCell(row,usd.format(record.actual),"number");fragment.appendChild(row)});el.ccTableBody.appendChild(fragment);el.ccTableSummary.textContent=`${number.format(sorted.length)} registros ejecutados`;el.ccPageText.textContent=`Página ${state.ccPage} de ${pages}`;el.previousCcPage.disabled=state.ccPage<=1;el.nextCcPage.disabled=state.ccPage>=pages;updateSortButtons("cc-sort",state.ccSort);
 }
 
+function isLaborBudgetRow(row){return row.budget!==0&&`${row.item} ${row.shortItem}`.toLocaleUpperCase("es").includes("MANO DE OBRA")}
+function isLaborActualRow(row){return row.actual!==0&&row.className.toLocaleUpperCase("es")==="MANO DE OBRA"}
+function buildLaborOptions(){
+  const monthFragment=document.createDocumentFragment();MONTHS.forEach(month=>{const option=document.createElement("option");option.value=month;option.textContent=month;monthFragment.appendChild(option)});el.laborMonthFilter.appendChild(monthFragment);refreshLaborItemOptions();
+}
+function refreshLaborItemOptions(){
+  const current=state.laborItem,items=new Set();state.rows.forEach(row=>{if(state.laborArea&&row.category!==state.laborArea)return;if((isLaborBudgetRow(row)||isLaborActualRow(row))&&row.item)items.add(row.item)});
+  const fragment=document.createDocumentFragment(),all=document.createElement("option");all.value="";all.textContent="Todas las partidas";fragment.appendChild(all);[...items].sort((a,b)=>a.localeCompare(b,"es")).forEach(item=>{const option=document.createElement("option");option.value=item;option.textContent=item;fragment.appendChild(option)});el.laborItemFilter.replaceChildren(fragment);state.laborItem=items.has(current)?current:"";el.laborItemFilter.value=state.laborItem;
+}
+function laborScopeRows(){return state.rows.filter(row=>(!state.laborArea||row.category===state.laborArea)&&(!state.laborItem||row.item===state.laborItem))}
+function renderLaborView(){
+  const scoped=laborScopeRows(),budgetRows=scoped.filter(isLaborBudgetRow),actualRows=scoped.filter(isLaborActualRow),kpiBudgetRows=state.laborMonth?budgetRows.filter(row=>row.month===state.laborMonth):budgetRows,kpiActualRows=state.laborMonth?actualRows.filter(row=>row.month===state.laborMonth):actualRows,budget=kpiBudgetRows.reduce((sum,row)=>sum+row.budget,0),actual=kpiActualRows.reduce((sum,row)=>sum+row.actual,0),value={budget,actual},dev=deviation(value);
+  el.laborBudgetKpi.textContent=usd.format(budget);el.laborActualKpi.textContent=usd.format(actual);el.laborDeviationKpi.textContent=usd.format(dev);el.laborDeviationKpi.className=metricClass(dev);el.laborDeviationPercentKpi.textContent=formatPercent(deviationPercent(value));el.laborDeviationPercentKpi.className=metricClass(dev);el.laborScopeLabel.textContent=[state.laborItem||"Todas las partidas",state.laborMonth].filter(Boolean).join(" · ");
+  renderLaborMonthly(budgetRows,actualRows);renderLaborDistribution(actualRows);
+}
+function renderLaborMonthly(budgetRows,actualRows){
+  const values=MONTHS.map(()=>blankTotals());budgetRows.forEach(row=>{const index=MONTHS.indexOf(row.month);if(index>=0)values[index].budget+=row.budget});actualRows.forEach(row=>{const index=MONTHS.indexOf(row.month);if(index>=0)values[index].actual+=row.actual});state.charts.laborMonthly.data.labels=SHORT_MONTHS;state.charts.laborMonthly.data.datasets[0].data=values.map(value=>value.budget);state.charts.laborMonthly.data.datasets[1].data=values.map(value=>hasExecution(value)?value.actual:null);state.charts.laborMonthly.update();
+  const fragment=document.createDocumentFragment();values.forEach((value,index)=>{const executed=hasExecution(value),dev=deviation(value),row=document.createElement("tr");appendCell(row,MONTHS[index]);appendCell(row,usd.format(value.budget),"number");appendCell(row,executed?usd.format(value.actual):"—","number");appendCell(row,executed?usd.format(dev):"—",executed?`number ${metricClass(dev)}`:"number");appendCell(row,executed?formatPercent(deviationPercent(value)):"—",executed?`number ${metricClass(dev)}`:"number");fragment.appendChild(row)});el.laborMonthlyTableBody.replaceChildren(fragment);
+  const total=values.reduce((result,value)=>{result.budget+=value.budget;result.actual+=value.actual;return result},blankTotals()),dev=deviation(total),row=document.createElement("tr");appendCell(row,"TOTAL GENERAL");appendCell(row,usd.format(total.budget),"number");appendCell(row,usd.format(total.actual),"number");appendCell(row,usd.format(dev),`number ${metricClass(dev)}`);appendCell(row,formatPercent(deviationPercent(total)),`number ${metricClass(dev)}`);el.laborMonthlyTableFoot.replaceChildren(row);
+}
+function getLaborDistributionRows(actualRows){
+  const query=clean(el.laborSearch.value).toLocaleLowerCase("es");return actualRows.filter(row=>(!state.laborMonth||row.month===state.laborMonth)&&(!query||`${row.laborId} ${row.labor}`.toLocaleLowerCase("es").includes(query)));
+}
+function renderLaborDistribution(actualRows){
+  const filtered=getLaborDistributionRows(actualRows),groups=new Map();filtered.forEach(row=>{const item=row.item||"SIN PARTIDA",laborId=row.laborId||"SIN ID",labor=row.labor||"SIN LABOR",key=`${item}|||${laborId}|||${labor}`;if(!groups.has(key))groups.set(key,{key,item,laborId,labor,actual:0});groups.get(key).actual+=row.actual});state.laborEntries=[...groups.values()].sort((a,b)=>b.actual-a.actual);const total=state.laborEntries.reduce((sum,entry)=>sum+entry.actual,0),top=state.laborEntries.slice(0,12);state.laborChartEntries=top;state.charts.laborDistribution.data.labels=top.map(entry=>`${entry.labor} · ${entry.item}`);state.charts.laborDistribution.data.datasets[0].data=top.map(entry=>entry.actual);state.charts.laborDistribution.update();
+  const fragment=document.createDocumentFragment();state.laborEntries.forEach(entry=>{const row=document.createElement("tr");row.tabIndex=0;row.classList.toggle("selected",state.selectedLaborKey===entry.key);row.addEventListener("click",()=>selectLabor(entry,filtered));row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" ")selectLabor(entry,filtered)});[entry.item,entry.laborId,entry.labor].forEach(value=>appendCell(row,value));appendCell(row,usd.format(entry.actual),"number");appendCell(row,total?`${Math.round(entry.actual/total*100)}%`:"—","number");fragment.appendChild(row)});el.laborTableBody.replaceChildren(fragment);el.laborTableSummary.textContent=`${number.format(state.laborEntries.length)} labores · ${usd.format(total)} ejecutado`;
+  if(state.selectedLaborKey&&!groups.has(state.selectedLaborKey)){state.selectedLaborKey="";state.laborDetailRows=[];el.laborDetailPanel.hidden=true}
+}
+function selectLabor(entry,filteredRows){
+  state.selectedLaborKey=entry.key;state.laborDetailRows=filteredRows.filter(row=>`${row.item||"SIN PARTIDA"}|||${row.laborId||"SIN ID"}|||${row.labor||"SIN LABOR"}`===entry.key);state.laborPage=1;state.laborSort={key:"month",dir:1};el.laborDetailPanel.hidden=false;el.laborDetailTitle.textContent=`${entry.laborId} · ${entry.labor}`;renderLaborView();renderLaborDetail();requestAnimationFrame(()=>el.laborDetailPanel.scrollIntoView({behavior:"smooth",block:"start"}));
+}
+function renderLaborDetail(){
+  const sorted=sortRows(state.laborDetailRows,state.laborSort),pages=Math.max(1,Math.ceil(sorted.length/PAGE_SIZE));state.laborPage=Math.min(state.laborPage,pages);const start=(state.laborPage-1)*PAGE_SIZE,rows=sorted.slice(start,start+PAGE_SIZE),fragment=document.createDocumentFragment();rows.forEach(record=>{const row=document.createElement("tr");[record.month,record.item,record.laborId,record.labor,record.costCenterId,record.costCenter].forEach(value=>appendCell(row,value||"—"));appendCell(row,usd.format(record.actual),"number");fragment.appendChild(row)});el.laborDetailTableBody.replaceChildren(fragment);el.laborPageText.textContent=`Página ${state.laborPage} de ${pages} · ${number.format(sorted.length)} registros`;el.previousLaborPage.disabled=state.laborPage<=1;el.nextLaborPage.disabled=state.laborPage>=pages;updateSortButtons("labor-sort",state.laborSort);
+}
+
 function sortRows(rows,config){return[...rows].sort((a,b)=>{let av=config.key==="month"?MONTHS.indexOf(a.month):a[config.key],bv=config.key==="month"?MONTHS.indexOf(b.month):b[config.key];if(typeof av==="number"&&typeof bv==="number")return(av-bv)*config.dir;return String(av||"").localeCompare(String(bv||""),"es",{numeric:true,sensitivity:"base"})*config.dir})}
 function toggleSort(config,key){if(config.key===key)config.dir*=-1;else{config.key=key;config.dir=1}}
 function updateSortButtons(attribute,config){document.querySelectorAll(`[data-${attribute}]`).forEach(button=>{const active=button.dataset[toCamel(attribute)]===config.key;button.classList.toggle("sorted",active);button.title=active?(config.dir===1?"Orden ascendente":"Orden descendente"):"Ordenar columna"})}
@@ -151,12 +187,14 @@ function createCharts(){
   state.charts.detail=new Chart(document.getElementById("detailChart"),{type:"line",data:{labels:[],datasets:[budgetDataset(true),actualDataset(true)]},options:chartOptions((event,elements)=>{if(!elements.length)return;state.detailMonth=MONTHS[elements[0].index];state.detailPage=1;updateDetailMonthChip();renderDetailTable()})});
   state.charts.costCenter=new Chart(document.getElementById("costCenterChart"),{type:"bar",data:{labels:[],datasets:[actualDataset()]},options:chartOptions()});
   state.charts.class=new Chart(document.getElementById("classChart"),{type:"doughnut",data:{labels:[],datasets:[{data:[],backgroundColor:["#0c4f7d","#159474","#168ca0","#72b7a5","#4a87ad","#9acfc2"],borderColor:"#ffffff",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,onClick:(event,elements)=>{if(!elements.length)return;const selected=state.charts.class.data.labels[elements[0].index];state.ccClass=state.ccClass===selected?"":selected;applyConsumptionClass()},plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:9}},tooltip:{callbacks:{label:context=>`${context.label}: ${usd.format(context.raw)}`}}}}});
+  state.charts.laborMonthly=new Chart(document.getElementById("laborMonthlyChart"),{type:"bar",data:{labels:[],datasets:[budgetDataset(),actualDataset()]},options:chartOptions()});
+  state.charts.laborDistribution=new Chart(document.getElementById("laborDistributionChart"),{type:"bar",data:{labels:[],datasets:[{...actualDataset(),label:"Ejecutado"}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",onClick:(event,elements)=>{if(!elements.length)return;const entry=state.laborChartEntries[elements[0].index],actualRows=laborScopeRows().filter(isLaborActualRow);if(entry)selectLabor(entry,getLaborDistributionRows(actualRows))},scales:{x:{beginAtZero:true,grid:{color:"rgba(100,128,143,.12)"},ticks:{callback:value=>new Intl.NumberFormat("en-US",{notation:"compact"}).format(value)}},y:{grid:{display:false},ticks:{autoSkip:false}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:context=>`Ejecutado: ${usd.format(context.raw)}`}}}}});
 }
 function budgetDataset(line=false){return{label:"Presupuesto",data:[],backgroundColor:"rgba(22,117,173,.78)",borderColor:"#1675ad",borderWidth:line?3:0,borderRadius:5,tension:.28,fill:false}}
 function actualDataset(line=false){return{label:"Ejecutado",data:[],backgroundColor:"rgba(21,148,116,.78)",borderColor:"#159474",borderWidth:line?3:0,borderRadius:5,tension:.28,fill:false,spanGaps:false}}
 function chartOptions(onClick){return{responsive:true,maintainAspectRatio:false,onClick,interaction:{mode:"index",intersect:false},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:"rgba(100,128,143,.12)"},ticks:{callback:value=>new Intl.NumberFormat("en-US",{notation:"compact"}).format(value)}}},plugins:{legend:{position:"bottom",labels:{usePointStyle:true,boxWidth:9}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${context.raw===null?"Sin ejecución":usd.format(context.raw)}`}}}}}
 
-function setView(view){state.view=view;document.getElementById("budgetView").hidden=view!=="budgetView";document.getElementById("costCenterView").hidden=view!=="costCenterView";document.querySelectorAll(".view-tab").forEach(button=>button.classList.toggle("active",button.dataset.view===view))}
+function setView(view){state.view=view;["budgetView","costCenterView","laborView"].forEach(id=>document.getElementById(id).hidden=id!==view);document.querySelectorAll(".view-tab").forEach(button=>button.classList.toggle("active",button.dataset.view===view));if(view==="laborView")requestAnimationFrame(()=>{state.charts.laborMonthly.resize();state.charts.laborDistribution.resize()})}
 function downloadWorkbook(rows,fileName){
   if(!rows.length)return;
   const headers=["Mes","Clase","Detalle / glosa","ID costo","Centro de costo","Proveedor","Ejecutado USD"],data=[headers,...rows.map(row=>[row.month,row.className,row.detail,row.costCenterId,row.costCenter,row.supplier,row.actual])],sheet=XLSX.utils.aoa_to_sheet(data);
@@ -165,12 +203,18 @@ function downloadWorkbook(rows,fileName){
   for(let row=1;row<data.length;row+=1){const cell=sheet[XLSX.utils.encode_cell({r:row,c:6})];if(cell){cell.t="n";cell.z='[$$-en-US]#,##0.00'}}
   const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,sheet,"Detalle ejecutado");XLSX.writeFile(workbook,`${fileName}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
+function downloadLaborWorkbook(){
+  const rows=sortRows(state.laborDetailRows,state.laborSort);if(!rows.length)return;const headers=["Mes","Partida","ID labor","Labor","ID costo","Centro de costo","Ejecutado USD"],data=[headers,...rows.map(row=>[row.month,row.item,row.laborId,row.labor,row.costCenterId,row.costCenter,row.actual])],sheet=XLSX.utils.aoa_to_sheet(data);sheet["!autofilter"]={ref:`A1:G${data.length}`};sheet["!cols"]=[{wch:12},{wch:42},{wch:14},{wch:38},{wch:16},{wch:32},{wch:16}];headers.forEach((_,index)=>{const cell=sheet[XLSX.utils.encode_cell({r:0,c:index})];cell.s={fill:{fgColor:{rgb:"0C4F7D"}},font:{bold:true,color:{rgb:"FFFFFF"}},alignment:{horizontal:"center"}}});for(let row=1;row<data.length;row+=1){const cell=sheet[XLSX.utils.encode_cell({r:row,c:6})];if(cell){cell.t="n";cell.z='[$$-en-US]#,##0.00'}}const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,sheet,"Detalle mano de obra");XLSX.writeFile(workbook,`Detalle_mano_de_obra_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
 function showError(message){el.statusText.textContent="No se pudo cargar la información";el.errorBox.textContent=message;el.errorBox.hidden=false}
+function resetLaborSelection(){state.selectedLaborKey="";state.laborDetailRows=[];state.laborPage=1;el.laborDetailPanel.hidden=true}
 
 document.querySelectorAll(".view-tab").forEach(button=>button.addEventListener("click",()=>setView(button.dataset.view)));
 document.querySelectorAll(".area-button").forEach(button=>button.addEventListener("click",()=>{state.area=button.dataset.area;applyArea()}));
+document.querySelectorAll(".labor-area-button").forEach(button=>button.addEventListener("click",()=>{state.laborArea=button.dataset.laborArea;document.querySelectorAll(".labor-area-button").forEach(candidate=>{const active=candidate.dataset.laborArea===state.laborArea;candidate.classList.toggle("active",active);candidate.setAttribute("aria-pressed",String(active))});refreshLaborItemOptions();resetLaborSelection();renderLaborView()}));
 document.querySelectorAll("[data-detail-sort]").forEach(button=>button.addEventListener("click",()=>{toggleSort(state.detailSort,button.dataset.detailSort);state.detailPage=1;renderDetailTable()}));
 document.querySelectorAll("[data-cc-sort]").forEach(button=>button.addEventListener("click",()=>{toggleSort(state.ccSort,button.dataset.ccSort);state.ccPage=1;renderCcTable()}));
+document.querySelectorAll("[data-labor-sort]").forEach(button=>button.addEventListener("click",()=>{toggleSort(state.laborSort,button.dataset.laborSort);state.laborPage=1;renderLaborDetail()}));
 el.itemSearch.addEventListener("input",renderItems);el.downloadDetailButton.addEventListener("click",()=>downloadWorkbook(getFilteredDetailRows(),"Detalle_partida"));el.downloadCcButton.addEventListener("click",()=>downloadWorkbook(sortRows(state.ccRows,state.ccSort),"Consulta_consumos"));el.closeDetailButton.addEventListener("click",()=>{state.selectedItem=null;state.detailRows=[];el.detailPanel.hidden=true;renderItems()});
 el.clearDetailMonth.addEventListener("click",()=>{state.detailMonth="";state.detailPage=1;updateDetailMonthChip();renderDetailTable()});
 el.previousDetailPage.addEventListener("click",()=>{state.detailPage-=1;renderDetailTable()});el.nextDetailPage.addEventListener("click",()=>{state.detailPage+=1;renderDetailTable()});
@@ -178,4 +222,8 @@ let ccTimer;function queueConsumptionQuery(){clearTimeout(ccTimer);ccTimer=setTi
 [el.costCenterSearch,el.providerSearch,el.detailSearch].forEach(input=>{input.addEventListener("input",queueConsumptionQuery);input.addEventListener("change",runConsumptionQuery)});
 el.clearConsumptionFilters.addEventListener("click",()=>{el.costCenterSearch.value="";el.providerSearch.value="";el.detailSearch.value="";state.ccClass="";runConsumptionQuery()});
 el.previousCcPage.addEventListener("click",()=>{state.ccPage-=1;renderCcTable()});el.nextCcPage.addEventListener("click",()=>{state.ccPage+=1;renderCcTable()});
+el.laborItemFilter.addEventListener("change",()=>{state.laborItem=el.laborItemFilter.value;resetLaborSelection();renderLaborView()});el.laborMonthFilter.addEventListener("change",()=>{state.laborMonth=el.laborMonthFilter.value;resetLaborSelection();renderLaborView()});
+let laborTimer;el.laborSearch.addEventListener("input",()=>{clearTimeout(laborTimer);laborTimer=setTimeout(()=>{resetLaborSelection();renderLaborView()},180)});
+el.clearLaborFilters.addEventListener("click",()=>{state.laborArea="";state.laborItem="";state.laborMonth="";el.laborMonthFilter.value="";el.laborSearch.value="";document.querySelectorAll(".labor-area-button").forEach(button=>{const active=button.dataset.laborArea==="";button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active))});refreshLaborItemOptions();resetLaborSelection();renderLaborView()});
+el.clearLaborSelection.addEventListener("click",()=>{resetLaborSelection();renderLaborView()});el.downloadLaborButton.addEventListener("click",downloadLaborWorkbook);el.previousLaborPage.addEventListener("click",()=>{state.laborPage-=1;renderLaborDetail()});el.nextLaborPage.addEventListener("click",()=>{state.laborPage+=1;renderLaborDetail()});
 loadData();

@@ -37,7 +37,7 @@ def main():
     if source is None:
         raise SystemExit("No se encontró BD_ManttoSSGG.csv ni BD_ManttoSSGG.csv.csv")
 
-    dictionary_fields = ["months", "categories", "items", "shortItems", "classes", "costCenters", "costCenterIds", "suppliers", "periods"]
+    dictionary_fields = ["months", "categories", "items", "shortItems", "classes", "costCenters", "costCenterIds", "suppliers", "periods", "laborIds", "labors"]
     dictionaries = {field: [] for field in dictionary_fields}
     indexes = {field: {} for field in dictionary_fields}
 
@@ -76,9 +76,11 @@ def main():
                 number(row.get("CANTIDAD")),
                 budget,
                 actual,
+                index("laborIds", row.get("IDLABOR")),
+                index("labors", row.get("LABOR")),
             ])
 
-    payload = {"version": 2, **dictionaries, "rows": rows}
+    payload = {"version": 3, **dictionaries, "rows": rows}
     encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT.open("wb") as raw:

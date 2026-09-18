@@ -6,6 +6,7 @@ on:
     paths:
       - "data/BD_ManttoSSGG.csv"
       - "data/BD_ManttoSSGG.csv.csv"
+      - "scripts/build_data.py"
   workflow_dispatch:
 
 permissions:

@@ -15,6 +15,7 @@
     <nav class="view-tabs" aria-label="Consultas del tablero">
       <button class="view-tab active" type="button" data-view="budgetView">Resumen por partidas</button>
       <button class="view-tab" type="button" data-view="costCenterView">Consulta de consumos</button>
+      <button class="view-tab" type="button" data-view="laborView">Mano de obra</button>
     </nav>
 
     <div id="budgetView">
@@ -119,6 +120,72 @@
         </section>
       </section>
       <div id="costCenterEmpty" class="empty-state">Ingresa un centro de costo, proveedor o palabra del detalle para comenzar.</div>
+    </div>
+
+    <div id="laborView" hidden>
+      <section class="panel labor-filter-panel">
+        <div class="section-heading">
+          <div class="heading-with-step"><span class="step-number">1</span><div><h2>Consulta de mano de obra</h2><p>El presupuesto se compara por partida y el ejecutado se distribuye por labor.</p></div></div>
+          <div class="area-selector" role="group" aria-label="Área de mano de obra">
+            <button class="labor-area-button active" type="button" data-labor-area="" aria-pressed="true">Todo</button>
+            <button class="labor-area-button" type="button" data-labor-area="MANTENIMIENTO" aria-pressed="false">Mantenimiento</button>
+            <button class="labor-area-button" type="button" data-labor-area="SERVICIOS GENERALES" aria-pressed="false">SSGG</button>
+          </div>
+        </div>
+        <div class="labor-filter-grid">
+          <label class="field-label">Partida<select id="laborItemFilter" disabled><option value="">Todas las partidas</option></select></label>
+          <label class="field-label">Mes<select id="laborMonthFilter" disabled><option value="">Todos los meses</option></select></label>
+          <label class="field-label">ID labor o labor<input id="laborSearch" type="search" placeholder="Código o nombre de labor" disabled></label>
+          <button id="clearLaborFilters" class="clear-query-button" type="button">Limpiar filtros</button>
+        </div>
+      </section>
+
+      <section class="kpi-grid" aria-label="Resumen de mano de obra">
+        <article class="kpi-card"><span>Presupuesto de la partida</span><strong id="laborBudgetKpi">$0</strong><small id="laborScopeLabel">Todas las partidas</small></article>
+        <article class="kpi-card actual-card"><span>Ejecutado de mano de obra</span><strong id="laborActualKpi">$0</strong><small>Clase: Mano de Obra</small></article>
+        <article class="kpi-card deviation-card"><span>Desviación en USD</span><strong id="laborDeviationKpi">$0</strong><small>Ejecutado − presupuesto</small></article>
+        <article class="kpi-card percent-card"><span>Desviación porcentual</span><strong id="laborDeviationPercentKpi">0%</strong><small>Desviación / presupuesto</small></article>
+      </section>
+
+      <p id="laborNotice" class="labor-notice">El presupuesto está definido a nivel de partida. Las labores muestran únicamente la distribución del ejecutado.</p>
+
+      <section class="panel">
+        <div class="section-heading"><div class="heading-with-step"><span class="step-number">2</span><div><h2>Presupuesto y ejecutado mensual</h2><p>Comparativo de los 12 meses para la partida seleccionada</p></div></div></div>
+        <div class="monthly-layout">
+          <div class="chart-wrap"><canvas id="laborMonthlyChart"></canvas></div>
+          <div class="monthly-table-wrap"><table><thead><tr><th>Mes</th><th class="number">Presupuesto</th><th class="number">Ejecutado</th><th class="number">Desv. USD</th><th class="number">Desv. %</th></tr></thead><tbody id="laborMonthlyTableBody"></tbody><tfoot id="laborMonthlyTableFoot"></tfoot></table></div>
+        </div>
+      </section>
+
+      <section class="labor-analysis-grid">
+        <article class="panel">
+          <div class="section-heading"><div class="heading-with-step"><span class="step-number">3</span><div><h2>Ejecutado por labor</h2><p>Principales labores según el filtro seleccionado</p></div></div></div>
+          <div class="labor-chart-wrap"><canvas id="laborDistributionChart"></canvas></div>
+        </article>
+        <article class="panel labor-table-panel">
+          <div class="section-heading"><div><h2>Distribución de labores</h2><p id="laborTableSummary">0 labores</p></div></div>
+          <div class="labor-summary-scroll"><table><thead><tr><th>Partida</th><th>ID labor</th><th>Labor</th><th class="number">Ejecutado</th><th class="number">% total</th></tr></thead><tbody id="laborTableBody"></tbody></table></div>
+        </article>
+      </section>
+
+      <section id="laborDetailPanel" class="panel detail-panel" hidden>
+        <div class="section-heading">
+          <div class="heading-with-step"><span class="step-number">4</span><div><p class="detail-kicker">DETALLE DEL EJECUTADO</p><h2 id="laborDetailTitle">Todas las labores</h2><p>Detalle por centro de costo</p></div></div>
+          <div class="heading-actions"><button id="downloadLaborButton" class="excel-button" type="button">Descargar Excel</button><button id="clearLaborSelection" class="text-button" type="button">Ver todas las labores</button></div>
+        </div>
+        <div class="detail-table-scroll"><table class="detail-table">
+          <thead><tr>
+            <th><button class="sort-button" data-labor-sort="month">Mes</button></th>
+            <th><button class="sort-button" data-labor-sort="item">Partida</button></th>
+            <th><button class="sort-button" data-labor-sort="laborId">ID labor</button></th>
+            <th><button class="sort-button" data-labor-sort="labor">Labor</button></th>
+            <th><button class="sort-button" data-labor-sort="costCenterId">ID costo</button></th>
+            <th><button class="sort-button" data-labor-sort="costCenter">Centro de costo</button></th>
+            <th class="number"><button class="sort-button" data-labor-sort="actual">Ejecutado</button></th>
+          </tr></thead><tbody id="laborDetailTableBody"></tbody>
+        </table></div>
+        <div class="pagination"><button id="previousLaborPage" type="button" disabled>Anterior</button><span id="laborPageText">Página 1 de 1</span><button id="nextLaborPage" type="button" disabled>Siguiente</button></div>
+      </section>
     </div>
   </main>
   <div id="errorBox" class="error-box" role="alert" hidden></div>
