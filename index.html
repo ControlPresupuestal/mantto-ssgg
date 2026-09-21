@@ -46,9 +46,18 @@
       <section class="panel">
         <div class="section-heading items-heading">
           <div class="heading-with-step"><span class="step-number">3</span><div><h2>Comparativo de partidas por mes</h2><p>Haz clic en una partida para consultar el ejecutado</p></div></div>
-          <label class="field-label">Buscar partida<input id="itemSearch" type="search" placeholder="Escribe una partida…" disabled></label>
+          <div class="items-controls">
+            <div class="month-view-control">
+              <span>Vista de meses</span>
+              <div class="month-view-selector" role="group" aria-label="Vista de meses">
+                <button class="month-view-button active" type="button" data-month-view="executed" aria-pressed="true">Hasta el último ejecutado</button>
+                <button class="month-view-button" type="button" data-month-view="full" aria-pressed="false">Año completo</button>
+              </div>
+            </div>
+            <label class="field-label">Buscar partida<input id="itemSearch" type="search" placeholder="Escribe una partida…" disabled></label>
+          </div>
         </div>
-        <p class="scroll-hint">Desliza horizontalmente para revisar los 12 meses →</p>
+        <p id="itemsScrollHint" class="scroll-hint">Desliza horizontalmente para revisar los meses →</p>
         <div class="matrix-scroll"><table class="matrix-table"><thead id="itemsTableHead"></thead><tbody id="itemsTableBody"></tbody><tfoot id="itemsTableFoot"></tfoot></table></div>
         <p id="itemsSummary" class="table-summary">0 partidas</p>
       </section>
